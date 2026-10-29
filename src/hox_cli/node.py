@@ -4,6 +4,7 @@ import hashlib
 import re
 import shlex
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -35,16 +36,67 @@ class NodeFacts:
     failing_promises: list[str]  # from the last `slapos node instance` run
 
 
+# Exit codes of `slapos node software|instance`.
+SLAPGRID_OK, SLAPGRID_FAIL, SLAPGRID_PROMISE_FAIL = 0, 1, 2
+SLAPGRID_BUSY = 10  # another run (the node's cron) holds the pidfile
+BUSY_RETRY_SECONDS = 15
+BUSY_TIMEOUT_SECONDS = 15 * 60
+
+# What `hox rebuild` shows of a slapgrid run: parts that change (buildout says
+# "Updating x." for every unchanged one), errors and the end of each run.
+_SHOWN = re.compile(
+    r"(Installing|Uninstalling) \S+\.$|Error|While:|Failed to run buildout"
+    r"|Finished (software releases|computer partitions)|slappart\d+\["
+)
+
+
+def shown(line: str) -> bool:
+    return bool(_SHOWN.search(line))
+
+
 class Node:
-    def __init__(self, ssh: tuple[str, ...], run=subprocess.run):
+    def __init__(self, ssh: tuple[str, ...], run=subprocess.run, popen=subprocess.Popen, sleep=time.sleep):
         self._ssh = ssh
         self._run = run
+        self._popen = popen
+        self._sleep = sleep
 
     def run(self, command: str) -> str:
         result = self._run([*self._ssh, command], capture_output=True, text=True)
         if result.returncode != 0:
             raise NodeError(f"{shlex.join(self._ssh)} {command!r}: exit {result.returncode}: {result.stderr.strip()[-500:]}")
         return result.stdout
+
+    def stream(self, command: str, keep, out=print) -> int:
+        """Run command, pass the lines that `keep` accepts to `out`, return its exit code."""
+        with self._popen([*self._ssh, command], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
+            for line in proc.stdout:
+                if keep(line.rstrip("\n")):
+                    out(line.rstrip("\n"))
+        return proc.returncode
+
+    def interactive(self, command: str) -> int:
+        """Run command with the terminal attached (tail -F), return its exit code."""
+        return self._run([*self._ssh, command]).returncode
+
+    def slapgrid(self, args: str, out=print) -> int:
+        """`slapos node <args>`, waiting while the node's own run holds the lock.
+
+        Returns SLAPGRID_OK or SLAPGRID_PROMISE_FAIL; raises on anything else.
+        """
+        waited = 0
+        while True:
+            code = self.stream(f"slapos node {args}", shown, out)
+            if code != SLAPGRID_BUSY:
+                break
+            if waited >= BUSY_TIMEOUT_SECONDS:
+                raise NodeError(f"slapos node {args}: another slapos run kept the lock for {waited // 60} min")
+            out(f"another slapos run is going on, retrying in {BUSY_RETRY_SECONDS}s")
+            self._sleep(BUSY_RETRY_SECONDS)
+            waited += BUSY_RETRY_SECONDS
+        if code not in (SLAPGRID_OK, SLAPGRID_PROMISE_FAIL):
+            raise NodeError(f"slapos node {args}: exit {code}")
+        return code
 
     def facts(self, urls: list[str]) -> NodeFacts:
         dirs = [software_dir(u) for u in urls]

@@ -4,16 +4,18 @@ import dataclasses
 import json
 import sys
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 import httpx2
 from cyclopts import App, Parameter
 
 from . import config as config_module
+from . import dev
 from . import status as status_module
-from .config import Config, ConfigError
+from .config import Config, ConfigError, Software
+from .dev import DevError
 from .master import Api, MasterError
-from .node import Node, NodeError
+from .node import INSTANCE_LOG, SLAPGRID_PROMISE_FAIL, SOFTWARE_LOG, Node, NodeError
 
 app = App(name="hox", help="Drive our SlapOS work on Rapid.Space from the terminal.")
 api_app = App(name="api", help="Raw, read-only access to the master's API.")
@@ -126,6 +128,100 @@ def format_report(r: status_module.Report, branch_url: str) -> str:
     return "\n".join(out)
 
 
+def _instance_or_fail(api: Api, sw: Software) -> status_module.Instance:
+    inst = status_module.instance(api, sw.instance)
+    if inst is None:
+        raise DevError(f"no instance {sw.instance!r} on the master (`hox request`)")
+    return inst
+
+
+@app.command
+def check(software: str | None = None) -> int:
+    """Run the software's checks (hox.toml) with curl on the node.
+
+    Parameters
+    ----------
+    software
+        A [software.<name>] of hox.toml; optional when there is only one.
+    """
+    config = _config()
+    sw = config.software_named(software)
+    inst = _instance_or_fail(_api(config), sw)
+    return _report_checks(dev.run_checks(sw.checks, inst.connection, Node(config.node.ssh)))
+
+
+def _report_checks(results: list[dev.CheckResult]) -> int:
+    for r in results:
+        print(f"{'ok  ' if r.ok else 'FAIL'}  {r.name}: {r.detail}" + (f"  ({r.url})" if r.url else ""))
+    return 0 if all(r.ok for r in results) else 1
+
+
+@app.command
+def rebuild(software: str | None = None, *, software_only: bool = False, no_wait: bool = False) -> int:
+    """The dev loop: rebuild the branch URL in place on the node, redeploy, check.
+
+    Refuses if the local branch isn't pushed. Waits until raw.githubusercontent.com
+    serves the pushed files (its cache keeps them up to 5 minutes).
+
+    Parameters
+    ----------
+    software
+        A [software.<name>] of hox.toml; optional when there is only one.
+    software_only
+        Rebuild the software release only: no instance run, no checks.
+    no_wait
+        Don't wait for raw.githubusercontent.com to serve the pushed files.
+    """
+    config = _config()
+    sw = config.software_named(software)
+    head = dev.require_pushed(sw)
+    print(f"{sw.branch} is pushed at {head[:9]}")
+    if not no_wait:
+        with httpx2.Client(timeout=30) as http:
+            dev.wait_for_github(sw, head, http)
+    node = Node(config.node.ssh)
+    node.slapgrid(f"software --force --only-sr {sw.branch_url}")
+    if software_only:
+        return 0
+    if node.slapgrid("instance --force") == SLAPGRID_PROMISE_FAIL:
+        print("some promises fail (see above)")
+    inst = _instance_or_fail(_api(config), sw)
+    return _report_checks(dev.run_checks(sw.checks, inst.connection, node))
+
+
+@app.command
+def logs(
+    kind: Literal["software", "instance", "app"],
+    *,
+    software: str | None = None,
+    follow: Annotated[bool, Parameter(name=["--follow", "-f"])] = False,
+    lines: Annotated[int, Parameter(name=["--lines", "-n"])] = 50,
+) -> int:
+    """Tail a log on the node: slapgrid's software or instance log, or the app's service logs.
+
+    Parameters
+    ----------
+    kind
+        software, instance, or app (the instance's service logs).
+    software
+        A [software.<name>] of hox.toml, for app logs; optional when there is only one.
+    follow
+        Keep following (Ctrl-C to stop).
+    lines
+        Number of lines to show.
+    """
+    config = _config()
+    if kind == "app":
+        sw = config.software_named(software)
+        partition = _instance_or_fail(_api(config), sw).partition
+        if partition is None:
+            raise DevError(f"{sw.instance} has no partition yet")
+        target = f"/srv/slapgrid/{partition}/.{partition}_*.log"
+    else:
+        target = SOFTWARE_LOG if kind == "software" else INSTANCE_LOG
+    return Node(config.node.ssh).interactive(f"tail -n {lines}{' -F' if follow else ''} {target}")
+
+
 @app.meta.default
 def main(
     *tokens: Annotated[str, Parameter(show=False, allow_leading_hyphen=True)],
@@ -143,12 +239,13 @@ def main(
     global _config_path
     _config_path = config
     try:
-        app(tokens)
-    except (ConfigError, MasterError, NodeError) as e:
+        code = app(tokens)
+    except (ConfigError, DevError, MasterError, NodeError) as e:
         if debug:
             raise
         print(f"hox: {e}", file=sys.stderr)
         sys.exit(1)
+    sys.exit(code or 0)
 
 
 def run():

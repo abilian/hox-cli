@@ -76,3 +76,64 @@ def test_facts_sends_one_command():
     assert len(calls) == 1
     assert facts.software[0].state == "completed"
     assert facts.software[0].last_error is None
+
+
+class FakeProc:
+    def __init__(self, lines, returncode):
+        self.stdout, self.returncode = iter(lines), returncode
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def popen_returning(*runs):
+    """A Popen that plays `runs` (lines, exit code) in order and records the commands."""
+    runs, commands = list(runs), []
+
+    def popen(args, **kwargs):
+        commands.append(args[-1])
+        lines, code = runs.pop(0)
+        return FakeProc([line + "\n" for line in lines], code)
+
+    return popen, commands
+
+
+SLAPGRID_LINES = [
+    "INFO Updating ncurses.",
+    "INFO Installing mynij-proxy-eggs.",
+    "INFO Finished software releases.",
+]
+
+
+def test_slapgrid_shows_changes_not_unchanged_parts():
+    popen, commands = popen_returning((SLAPGRID_LINES, 0))
+    out = []
+    assert Node(("ssh", "h"), popen=popen).slapgrid("software --force", out=out.append) == 0
+    assert commands == ["slapos node software --force"]
+    assert out == ["INFO Installing mynij-proxy-eggs.", "INFO Finished software releases."]
+
+
+def test_slapgrid_waits_while_busy():
+    busy = (["INFO New slapos process started, but another slapos process is aleady running with pid 1, exiting."], 10)
+    popen, commands = popen_returning(busy, busy, (SLAPGRID_LINES, 2))
+    sleeps, out = [], []
+    node = Node(("ssh", "h"), popen=popen, sleep=sleeps.append)
+    assert node.slapgrid("instance --force", out=out.append) == 2  # promise failures are not an error
+    assert len(commands) == 3
+    assert sleeps == [15, 15]
+
+
+def test_slapgrid_gives_up_when_busy_too_long(monkeypatch):
+    monkeypatch.setattr("hox_cli.node.BUSY_TIMEOUT_SECONDS", 15)
+    popen, _ = popen_returning(([], 10), ([], 10))
+    with pytest.raises(NodeError, match="kept the lock"):
+        Node(("ssh", "h"), popen=popen, sleep=lambda _: None).slapgrid("software", out=lambda _: None)
+
+
+def test_slapgrid_failure():
+    popen, _ = popen_returning((["INFO Error: boom"], 1))
+    with pytest.raises(NodeError, match="exit 1"):
+        Node(("ssh", "h"), popen=popen).slapgrid("software", out=lambda _: None)

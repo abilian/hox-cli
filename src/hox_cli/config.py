@@ -54,12 +54,15 @@ class Software:
     instance: str
     checks: tuple[Check, ...] = ()
 
+    def raw_url(self, file: str, ref: str | None = None) -> str:
+        return f"https://raw.githubusercontent.com/{self.repo}/{ref or self.branch}/{file}"
+
     def pinned_url(self, commit: str) -> str:
-        return f"https://raw.githubusercontent.com/{self.repo}/{commit}/{self.path}"
+        return self.raw_url(self.path, commit)
 
     @property
     def branch_url(self) -> str:
-        return self.pinned_url(self.branch)
+        return self.raw_url(self.path)
 
 
 @dataclass(frozen=True)

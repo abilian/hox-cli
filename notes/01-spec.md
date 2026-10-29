@@ -36,14 +36,14 @@ Every command prints what it does in one line per step and fails with a non-zero
 
 `hox rebuild [SOFTWARE] [--software-only] [--no-wait]`
 - The dev loop. Requires the local branch to be pushed (refuses otherwise, telling which commit is missing on the remote).
-- Waits until raw.githubusercontent.com serves the pushed `software.cfg` (its cache keeps branch files up to 5 minutes), unless `--no-wait`.
-- Runs `slapos node software --force --only-sr <branch URL>` on the node, then `slapos node instance --force`, streaming the relevant lines (`Installing`, `Updating`, errors).
-- Ends with `hox check`.
+- Waits until raw.githubusercontent.com serves every file of the software's directory as in the pushed commit (the node fetches `instance.cfg.in` & co. from there too; its cache keeps branch files up to 5 minutes), unless `--no-wait`. Files outside that directory (`stack/`, `component/`) are not checked.
+- Runs `slapos node software --force --only-sr <branch URL>` on the node, then `slapos node instance --force`, streaming the relevant lines (`Installing`/`Uninstalling`, errors, end of run; not buildout's `Updating x.` for every unchanged part). When the node's cron run holds slapgrid's lock (exit 10), retries every 15 s for up to 15 minutes. Exit 2 of the instance run (promises fail) is reported, not fatal.
+- Ends with `hox check`; its exit code is the checks' (1 if one fails).
 
 `hox check [SOFTWARE]` (read-only)
 - The acceptance checks, from the node (the backend is only reachable over re6st): backend `/ping` (TLS not verified), frontend `/ping` when `url` is published, and the CORS header on `/proxy` with an `Origin:` header. Checks are declared per software in the config (method, path, headers, expected status/header), so SBE can declare its own.
 
-`hox logs [SOFTWARE] {software,instance,app} [-f] [-n N]`
+`hox logs {software,instance,app} [--software NAME] [-f] [-n N]`
 - Tails the node's software log, instance log, or the instance's service logs (`/srv/slapgrid/<partition>/.<partition>_*.log`), over SSH.
 
 `hox request [SOFTWARE] [--name NAME] [--pinned COMMIT]`
@@ -102,6 +102,7 @@ hox-cli/
     master.py     # SlapClient (slap protocol) + Api (hateoas reads, form submits)
     node.py       # ssh/git helpers, log parsing
     status.py     # gathering and diagnosing for `hox status`
+    dev.py        # the dev loop: pushed?, GitHub freshness, checks
   tests/
     fixtures/     # API replies and node logs recorded on 2026-10-29 (passwords redacted)
 ```
