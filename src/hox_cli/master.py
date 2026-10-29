@@ -1,7 +1,10 @@
-"""The SlapOS master: its API (hateoas, ERP5Document_getHateoas) for reads and forms."""
+"""The SlapOS master: its API (hateoas) for reads and forms, and the slap protocol."""
 
 import re
+from dataclasses import dataclass, field
 from urllib.parse import quote, urljoin, urlsplit
+from xml.etree import ElementTree
+from xml.sax.saxutils import escape
 
 import httpx2
 
@@ -91,3 +94,125 @@ def _get(client: httpx2.Client, url: str, extensions: dict | None = None) -> htt
 def quoted(value: str) -> str:
     """A value for an ERP5 catalog query (title:="...")."""
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+# The slap protocol: form POSTs to master.url, some fields marshalled as
+# slapos.core does (slapos.util.dumps, golden values in tests/test_master.py).
+
+
+def marshal(value: dict[str, str] | str | bool) -> str:
+    def text(s: str) -> str:
+        # slapos.core escapes twice (xml_marshaller, then serialization); the master expects it.
+        return f"<string>{escape(escape(s))}</string>"
+
+    if isinstance(value, bool):
+        body = f"<bool>{int(value)}</bool>"
+    elif isinstance(value, str):
+        body = text(value)
+    elif not value:
+        body = '<dictionary id="i2"/>'
+    else:
+        body = '<dictionary id="i2">' + "".join(text(k) + text(v) for k, v in value.items()) + "</dictionary>"
+    return f"<marshal>{body}</marshal>"
+
+
+_STATES = {"start_requested": "started", "stop_requested": "stopped", "destroy_requested": "destroyed"}
+
+
+@dataclass(frozen=True)
+class Request:
+    """An instance request, as sent to requestComputerPartition."""
+
+    software_release: str
+    reference: str
+    software_type: str
+    filter: dict[str, str]
+    parameters: dict[str, str] = field(default_factory=dict)
+    shared: bool = False
+    state: str = "started"
+
+    def form(self) -> dict[str, str]:
+        return {
+            "software_release": self.software_release,
+            "partition_reference": self.reference,
+            "software_type": self.software_type,
+            "partition_parameter_xml": marshal(self.parameters),
+            "filter_xml": marshal(self.filter),
+            "state": marshal(self.state),
+            "shared_xml": marshal(self.shared),
+        }
+
+
+def stored_request(api: Api, reference: str) -> Request | None:
+    """The request an instance tree was created with, read back from the master.
+
+    The master answers 500 to a request whose URL, type or filter differ from
+    the original: re-sending this one (with another state) is what works.
+    """
+    trees = api.search(
+        f"portal_type:\"Instance Tree\" AND validation_state:validated AND title:={quoted(reference)}",
+        ["url_string", "source_reference", "sla_xml", "text_content", "root_slave", "slap_state"],
+    )
+    if not trees:
+        return None
+    tree = trees[0]
+    return Request(
+        software_release=tree["url_string"],
+        reference=reference,
+        software_type=tree["source_reference"],
+        filter=instance_xml(tree["sla_xml"]),
+        parameters=instance_xml(tree["text_content"]),
+        shared=bool(tree["root_slave"]),
+        state=_STATES[tree["slap_state"]],
+    )
+
+
+def instance_xml(xml: str | None) -> dict[str, str]:
+    """<instance><parameter id="k">v</parameter>…</instance> -> {k: v}."""
+    if not xml:
+        return {}
+    root = ElementTree.fromstring(xml.encode())
+    return {p.get("id"): p.text or "" for p in root.iter("parameter")}
+
+
+class Slap:
+    def __init__(self, client: httpx2.Client, url: str):
+        self._client = client
+        self._url = url
+
+    @classmethod
+    def connect(cls, master: Master, transport: httpx2.BaseTransport | None = None) -> "Slap":
+        client = httpx2.Client(cert=(str(master.cert), str(master.key)), timeout=TIMEOUT, transport=transport)
+        return cls(client, master.url)
+
+    def _post(self, path: str, data: dict[str, str]) -> httpx2.Response:
+        url = urljoin(self._url, path)
+        try:
+            return self._client.post(url, data=data)
+        except httpx2.TransportError as e:
+            raise MasterError(f"POST {url}: {e}") from e
+
+    def supply(self, url: str, node: str, state: str = "available") -> None:
+        response = self._post("supplySupply", {"url": url, "computer_id": node, "state": state})
+        if response.is_error:
+            raise MasterError(f"supply {url} on {node}: HTTP {response.status_code} {response.text[:200]}")
+
+    def request(self, request: Request) -> bool:
+        """Send an instance request. True: the master processed it; False: still provisioning (HTTP 408)."""
+        response = self._post("requestComputerPartition", request.form())
+        if response.status_code == 408:  # what the master answers while it provisions, not a timeout
+            return False
+        if response.status_code == 500:
+            raise MasterError(
+                f"request {request.reference}: HTTP 500. The master answers that to a request whose URL,"
+                " software type or filter differ from the instance's original one."
+            )
+        if response.is_error:
+            raise MasterError(f"request {request.reference}: HTTP {response.status_code} {response.text[:200]}")
+        return True
+
+
+def next_name(reference: str) -> str:
+    """mynij-proxy-3 -> mynij-proxy-4; mynij-proxy -> mynij-proxy-2."""
+    base, _, number = reference.rpartition("-")
+    return f"{base}-{int(number) + 1}" if base and number.isdigit() else f"{reference}-2"

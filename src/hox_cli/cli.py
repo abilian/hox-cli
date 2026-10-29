@@ -14,7 +14,7 @@ from . import dev
 from . import status as status_module
 from .config import Config, ConfigError, Software
 from .dev import DevError
-from .master import Api, MasterError
+from .master import Api, MasterError, Request, Slap, next_name, stored_request
 from .node import INSTANCE_LOG, SLAPGRID_PROMISE_FAIL, SOFTWARE_LOG, Node, NodeError
 
 app = App(name="hox", help="Drive our SlapOS work on Rapid.Space from the terminal.")
@@ -220,6 +220,100 @@ def logs(
     else:
         target = SOFTWARE_LOG if kind == "software" else INSTANCE_LOG
     return Node(config.node.ssh).interactive(f"tail -n {lines}{' -F' if follow else ''} {target}")
+
+
+def _url(sw: Software, pinned: str | None) -> str:
+    return sw.pinned_url(pinned) if pinned else sw.branch_url
+
+
+def _confirm(question: str, yes: bool) -> None:
+    if not yes and input(f"{question} [y/N] ").strip().lower() not in ("y", "yes"):
+        raise DevError("cancelled")
+
+
+@app.command
+def supply(software: str | None = None, *, pinned: str | None = None, remove: bool = False):
+    """Supply the software release on our node (or remove it).
+
+    Parameters
+    ----------
+    software
+        A [software.<name>] of hox.toml; optional when there is only one.
+    pinned
+        A commit: use its pinned URL instead of the branch URL.
+    remove
+        Remove the release from the node instead.
+    """
+    config = _config()
+    url = _url(config.software_named(software), pinned)
+    Slap.connect(config.master).supply(url, config.node.reference, "destroyed" if remove else "available")
+    print(f"{'removal' if remove else 'supply'} of {url} on {config.node.reference} requested")
+
+
+@app.command
+def request(
+    software: str | None = None, *, name: str | None = None, pinned: str | None = None,
+    replace: bool = False, yes: bool = False,
+):
+    """Request the instance on our node, with the branch URL or a pinned one.
+
+    Re-requesting an existing instance re-sends its original request. The master
+    refuses to change an instance's URL (HTTP 500): --replace destroys it and
+    requests the next name instead (mynij-proxy-3 -> mynij-proxy-4).
+
+    Parameters
+    ----------
+    software
+        A [software.<name>] of hox.toml; optional when there is only one.
+    name
+        Instance name (default: `instance` in hox.toml).
+    pinned
+        A commit: use its pinned URL instead of the branch URL.
+    replace
+        If the instance runs another URL, destroy it and request the next name.
+    yes
+        Don't ask before destroying.
+    """
+    config = _config()
+    sw = config.software_named(software)
+    url = _url(sw, pinned)
+    name = name or sw.instance
+    api, slap = _api(config), Slap.connect(config.master)
+    existing = stored_request(api, name)
+    if existing and existing.software_release != url:
+        if not replace:
+            raise DevError(f"{name} runs {existing.software_release}; the master refuses a URL change: use --replace")
+        _confirm(f"Destroy {name} and request {next_name(name)}?", yes)
+        slap.request(dataclasses.replace(existing, state="destroyed"))
+        print(f"{name}: destruction requested")
+        name, existing = next_name(name), None
+        while stored_request(api, name):
+            name = next_name(name)
+    req = existing or Request(url, name, sw.software_type, {"computer_guid": config.node.reference})
+    ready = slap.request(dataclasses.replace(req, state="started"))
+    print(f"{name}: {'requested' if ready else 'requested, the master is provisioning it'} ({url})")
+    if name != sw.instance:
+        print(f"set instance = {name!r} in [software.{sw.name}] of {config.root / config_module.FILENAME}")
+
+
+@app.command
+def destroy(name: str, *, yes: bool = False):
+    """Destroy an instance, by re-sending its original request with state destroyed.
+
+    Parameters
+    ----------
+    name
+        The instance name.
+    yes
+        Don't ask for confirmation.
+    """
+    config = _config()
+    existing = stored_request(_api(config), name)
+    if existing is None:
+        raise DevError(f"no instance {name!r} on the master")
+    _confirm(f"Destroy {name} ({existing.software_release})?", yes)
+    Slap.connect(config.master).request(dataclasses.replace(existing, state="destroyed"))
+    print(f"{name}: destruction requested")
 
 
 @app.meta.default

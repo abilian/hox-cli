@@ -17,6 +17,9 @@ Without installing: `uv run --project hox-cli hox status`.
 - `hox rebuild [SOFTWARE] [--software-only] [--no-wait]`: the dev loop. Refuses an unpushed branch, waits for raw.githubusercontent.com to serve the pushed files, rebuilds the branch URL in place on the node, redeploys, runs the checks.
 - `hox check [SOFTWARE]`: the checks of hox.toml, with curl on the node. Exit 1 if one fails.
 - `hox logs {software,instance,app} [--software NAME] [-f] [-n N]`: tail slapgrid's logs or the instance's service logs.
+- `hox supply [SOFTWARE] [--pinned COMMIT] [--remove]`: supply (or remove) the branch or a pinned URL on our node.
+- `hox request [SOFTWARE] [--name NAME] [--pinned COMMIT] [--replace] [--yes]`: request the instance; re-requesting re-sends the original request. `--replace` destroys an instance on another URL and requests the next name.
+- `hox destroy NAME [--yes]`: destroy an instance.
 - `hox api get RELATIVE_URL [--view VIEW]`, `hox api search QUERY [--select FIELD …] [--limit N]`: raw read-only access to the master's API.
 
 ## Tests

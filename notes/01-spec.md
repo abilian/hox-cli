@@ -48,13 +48,14 @@ Every command prints what it does in one line per step and fails with a non-zero
 
 `hox request [SOFTWARE] [--name NAME] [--pinned COMMIT]`
 - Requests the instance on our node (`computer_guid` filter, software type from the config) with the branch URL, or a pinned URL.
-- If the instance already exists with another URL, says so and stops: the master answers 500 to an in-place URL change (see 2.6). `--replace` destroys it first and requests a new name (`<base>-<n+1>`), after confirmation.
+- An existing instance gets its original request again (URL, type, filter, parameters read back from the master), which is harmless.
+- If the instance already exists with another URL, says so and stops: the master answers 500 to an in-place URL change (see 2.6). `--replace` destroys it first and requests the next free name (`<base>-<n+1>`), after confirmation (`--yes` skips it), then tells to update `instance` in hox.toml (`hox` doesn't write its config).
 
 `hox destroy NAME [--yes]`
 - Destroys an instance tree by re-sending its original request (URL, software type, filter read back from the master) with state `destroyed`. Asks for confirmation unless `--yes`.
 
-`hox supply [SOFTWARE] [--pinned COMMIT] [--remove URL]`
-- Supplies (or removes) a software release on our node.
+`hox supply [SOFTWARE] [--pinned COMMIT] [--remove]`
+- Supplies (or removes) the branch URL, or a pinned URL, on our node.
 
 `hox release [SOFTWARE] COMMIT`
 - Makes a pinned version allocatable: supply the pinned URL, add it as a Software Release of the product, tick (release × software type) in the Allocation Supply. Does not move the instance (use `hox request --pinned … --replace`).
@@ -85,7 +86,7 @@ Every command prints what it does in one line per step and fails with a non-zero
 - Python ≥ 3.12, packaged with `uv` (`uv tool install ./hox-cli` gives a `hox` command).
 - **cyclopts** for the CLI.
 - **httpx2** for HTTP, with the client certificate for TLS client auth.
-- **xml-marshaller** to encode the slap protocol's form fields (it is what slapos.core uses, so the master gets byte-identical payloads). Added with the slap protocol commands (step 3).
+- No xml-marshaller after all: we only send four kinds of values (empty dict, dict of strings, string, bool), so `master.marshal` is ten lines, tested against golden values from slapos.core 1.26.1's `slapos.util.dumps` (including its double escaping of `&<>`).
 - Standard library otherwise: `tomllib` for the config, `subprocess` for `ssh` and `git`, `xml.etree` where we must read XML.
 - No dependency on `slapos.core`: its replies are marshalled `slapos.slap` objects, but everything we need to read is available as JSON from the API (2.4).
 
@@ -155,7 +156,7 @@ expect_header = { access-control-allow-origin = "https://example.org" }
 
 Two endpoints, both authenticated with the client certificate. TLS is verified: `api.vifib.com` serves the certificate of `slap.vifib.com` (checked 2026-10-29), so API requests verify it under that name (`master.api_tls_name`, httpx2's `sni_hostname` extension) instead of disabling verification as slapos.core does.
 
-- **slap protocol** on `master.url`: `POST supplySupply` (`url`, `computer_id`, `state`) and `POST requestComputerPartition` (`software_release`, `partition_reference`, `software_type`, and `partition_parameter_xml`, `filter_xml`, `state`, `shared_xml` marshalled with xml-marshaller). A 408 answer means "requested, not ready yet" and is not an error. The reply body is not decoded.
+- **slap protocol** on `master.url`: `POST supplySupply` (`url`, `computer_id`, `state`) and `POST requestComputerPartition` (`software_release`, `partition_reference`, `software_type`, and `partition_parameter_xml`, `filter_xml`, `state`, `shared_xml` marshalled). A 408 answer means "requested, not ready yet" and is not an error. The reply body is not decoded. An instance tree's original request is readable from the API: `url_string`, `source_reference` (type), `sla_xml` (filter), `text_content` (parameters), `root_slave` (shared), `slap_state`.
 - **API** (hateoas, `ERP5Document_getHateoas` on the URL that `GET /getHateoasUrl` returns, `api.vifib.com` today):
   - search: the root document's `raw_search` template with `query`, `select_list`, `limit` (what `slapos service list` uses);
   - read: `traverse` template with `relative_url` and an optional `view`;

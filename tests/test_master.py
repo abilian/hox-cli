@@ -6,7 +6,7 @@ import pytest
 
 from conftest import fixture_json
 from hox_cli.config import Master
-from hox_cli.master import Api, MasterError, expand, quoted
+from hox_cli.master import Api, MasterError, Request, Slap, expand, instance_xml, marshal, next_name, quoted, stored_request
 
 SEARCH = "https://api.vifib.com/ERP5Document_getHateoas?mode=search{&query,select_list*,limit*,group_by*}"
 MASTER = Master("https://slap.vifib.com/", Path("/c.crt"), Path("/c.key"), "slap.vifib.com")
@@ -88,3 +88,106 @@ def test_transport_error_is_master_error():
     api, _ = api_with(handler)
     with pytest.raises(MasterError, match="refused"):
         api.get("a/1")
+
+
+# slapos.core 1.26.1's slapos.util.dumps on the same values.
+GOLDEN = {
+    "empty": ({}, '<marshal><dictionary id="i2"/></marshal>'),
+    "filter": (
+        {"computer_guid": "COMP-20261027.021-9D1365"},
+        '<marshal><dictionary id="i2"><string>computer_guid</string>'
+        "<string>COMP-20261027.021-9D1365</string></dictionary></marshal>",
+    ),
+    "two": (
+        {"a": "x", "b": "y"},
+        '<marshal><dictionary id="i2"><string>a</string><string>x</string>'
+        "<string>b</string><string>y</string></dictionary></marshal>",
+    ),
+    "escape": (
+        {"k&<": "v>&\"'"},
+        '<marshal><dictionary id="i2"><string>k&amp;amp;&amp;lt;</string>'
+        "<string>v&amp;gt;&amp;amp;\"'</string></dictionary></marshal>",
+    ),
+    "started": ("started", "<marshal><string>started</string></marshal>"),
+    "false": (False, "<marshal><bool>0</bool></marshal>"),
+    "true": (True, "<marshal><bool>1</bool></marshal>"),
+}
+
+
+@pytest.mark.parametrize("value, expected", GOLDEN.values(), ids=GOLDEN.keys())
+def test_marshal_matches_slapos_core(value, expected):
+    assert marshal(value) == expected
+
+
+BRANCH_URL = "https://raw.githubusercontent.com/abilian/slapos_abilian_edge/mynij-proxy/software/mynij-proxy/software.cfg"
+
+
+class Searching:
+    def search(self, query, select, limit=100):
+        assert 'title:="mynij-proxy-3"' in query
+        return fixture_json("search_tree_request.json")["_embedded"]["contents"]
+
+
+def test_stored_request_reads_back_the_original():
+    assert stored_request(Searching(), "mynij-proxy-3") == Request(
+        software_release=BRANCH_URL,
+        reference="mynij-proxy-3",
+        software_type="default",
+        filter={"computer_guid": "COMP-20261027.021-9D1365"},
+        parameters={},
+        shared=False,
+        state="started",
+    )
+
+
+def test_instance_xml():
+    assert instance_xml(None) == {}
+    assert instance_xml('<?xml version="1.0"?><instance><parameter id="a">1</parameter>'
+                        '<parameter id="b"/></instance>') == {"a": "1", "b": ""}
+
+
+def slap_with(status: int, seen: list) -> Slap:
+    def handler(request):
+        seen.append((request.url.path, parse_qs(request.content.decode())))
+        return httpx2.Response(status, text="<marshal/>")
+
+    return Slap.connect(MASTER, transport=httpx2.MockTransport(handler))
+
+
+REQUEST = Request(BRANCH_URL, "mynij-proxy-3", "default", {"computer_guid": "COMP-1"})
+
+
+def test_request_payload():
+    seen = []
+    assert slap_with(200, seen).request(REQUEST) is True
+    path, form = seen[0]
+    assert path == "/requestComputerPartition"
+    assert form == {
+        "software_release": [BRANCH_URL],
+        "partition_reference": ["mynij-proxy-3"],
+        "software_type": ["default"],
+        "partition_parameter_xml": [marshal({})],
+        "filter_xml": [marshal({"computer_guid": "COMP-1"})],
+        "state": [marshal("started")],
+        "shared_xml": [marshal(False)],
+    }
+
+
+def test_request_408_means_provisioning():
+    assert slap_with(408, []).request(REQUEST) is False
+
+
+def test_request_500_explains_the_master():
+    with pytest.raises(MasterError, match="differ from the instance's original"):
+        slap_with(500, []).request(REQUEST)
+
+
+def test_supply_payload():
+    seen = []
+    slap_with(200, seen).supply(BRANCH_URL, "COMP-1", "destroyed")
+    assert seen == [("/supplySupply", {"url": [BRANCH_URL], "computer_id": ["COMP-1"], "state": ["destroyed"]})]
+
+
+@pytest.mark.parametrize("name, expected", [("mynij-proxy-3", "mynij-proxy-4"), ("mynij-proxy", "mynij-proxy-2"), ("x-9", "x-10")])
+def test_next_name(name, expected):
+    assert next_name(name) == expected
