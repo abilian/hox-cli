@@ -11,6 +11,10 @@ hox status                                # reads ../hox.toml (searched upward f
 
 Without installing: `uv run --project hox-cli hox status`.
 
+## Configuration
+
+`hox` reads the first `hox.toml` in the current directory or its parents: the HOX workspace keeps its own at the root, next to the checkouts it names. `hox.example.toml` is a commented copy of it (a test parses it, so it stays valid); start from it to set up another workspace.
+
 ## Commands
 
 - `hox status [SOFTWARE] [--json]`: instance, partition (or why it isn't allocated), connection parameters, frontends, builds on the node, failing promises, whether GitHub serves the pushed commit.

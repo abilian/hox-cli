@@ -1,3 +1,4 @@
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -58,3 +59,11 @@ def test_find_and_load(tmp_path):
 def test_find_none(tmp_path):
     with pytest.raises(ConfigError, match="no hox.toml"):
         find(tmp_path)
+
+
+def test_example_config_is_valid():
+    example = Path(__file__).parent.parent / "hox.example.toml"
+    config = parse(tomllib.loads(example.read_text()), ROOT)
+    sw = config.software_named(None)
+    assert sw.checkout == Path("/work/hox/slapos_abilian_edge")
+    assert [c.name for c in sw.checks] == ["backend ping", "frontend ping", "CORS"]

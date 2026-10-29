@@ -1,0 +1,49 @@
+# Example hox.toml: a copy of the HOX workspace's own, commented.
+# The real one lives at the workspace root (hox looks for it in the current
+# directory and its parents). Relative paths are relative to its directory.
+
+[master]
+url = "https://slap.vifib.com/"
+# Client certificate from `slapos configure client`.
+cert = "~/.slapos/client.crt"
+key = "~/.slapos/client.key"
+# api.vifib.com serves slap.vifib.com's certificate: verify it under that name.
+api_tls_name = "slap.vifib.com"
+
+[project]
+reference = "PROJ-20261026.009-F09D5B"  # Abilian (HyperOpenX)
+
+[node]
+reference = "COMP-20261027.021-9D1365"  # abilian-hox-node-1
+# How to run a command on the node as root; hox appends the command.
+ssh = ["ssh", "-F", "node-deployer/ssh_config", "-o", "LogLevel=ERROR", "hox-node"]
+
+# One table per software release we develop.
+[software.mynij-proxy]
+repo = "abilian/slapos_abilian_edge"  # GitHub repo the node fetches from
+checkout = "slapos_abilian_edge"  # local clone of it
+branch = "mynij-proxy"  # gives the branch URL
+path = "software/mynij-proxy/software.cfg"
+software_type = "default"
+product = "mynij-proxy"  # Software Product title on the master
+supply_title = "mynij-proxy on abilian-hox-node-1"  # Allocation Supply title
+instance = "mynij-proxy-3"  # instance tree name; `hox request --replace` says when to bump it
+
+# Checks run by `hox check` and `hox rebuild`, with curl on the node. URLs take
+# the instance's connection parameters ({backend-url}, {url}, …); a check whose
+# parameter isn't published yet fails with that reason.
+[[software.mynij-proxy.checks]]
+name = "backend ping"
+url = "{backend-url}/ping"
+expect_status = 200
+
+[[software.mynij-proxy.checks]]
+name = "frontend ping"
+url = "{url}/ping"
+expect_status = 200
+
+[[software.mynij-proxy.checks]]
+name = "CORS"
+url = "{backend-url}/proxy?url=https://example.org/"
+headers = { Origin = "https://example.org" }
+expect_header = { access-control-allow-origin = "https://example.org" }
