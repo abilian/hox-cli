@@ -1,6 +1,7 @@
 """`hox status`: what the master, the node and GitHub say about one software."""
 
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 import httpx2
@@ -129,24 +130,28 @@ def allocation_diagnosis(api: Api, config: Config, sw: Software, inst: Instance)
     return [f"no validated Allocation Supply ticks ({inst.url}, {inst.software_type})"]
 
 
-_CELL = re.compile(r"matrixbox_allocable_cell_(\d+)_(\d+)_\d+$")
+_CELL = re.compile(r"_cell_\d+_(\d+)_\d+$")
+ALLOCABLE = "matrixbox_allocable"
 
 
-def ticked_cells(line_view: dict) -> set[tuple[str, str]]:
-    """(release URL, software type) pairs ticked in an Allocation Supply Line's matrix.
+def matrix_cells(line_view: dict) -> Iterator[tuple[str, str, dict]]:
+    """(release URL, software type, field) for each field of an Allocation Supply Line's matrix.
 
     The matrix is a list of tables (one per value of a third dimension, unused
-    here), each a header row of software types and one row per release.
+    here), each a header row of software types and one row per release. A cell
+    has three fields: the `allocable` checkbox and two hidden category lists.
     """
-    ticked = set()
     for table in line_view["_embedded"]["_view"]["matrixbox"]["data"]:
         header, rows = table[0], table[1:]
         for row in rows:
-            for cell in row[1:]:
-                m = _CELL.match(cell.get("key", ""))
-                if m and cell.get("value"):
-                    ticked.add((_label(row[0]), _label(header[1 + int(m.group(2))])))
-    return ticked
+            for field in row[1:]:
+                column = int(_CELL.search(field["key"]).group(1))
+                yield _label(row[0]), _label(header[1 + column]), field
+
+
+def ticked_cells(line_view: dict) -> set[tuple[str, str]]:
+    """(release URL, software type) pairs ticked in an Allocation Supply Line's matrix."""
+    return {(r, t) for r, t, f in matrix_cells(line_view) if f["field_id"] == ALLOCABLE and f["value"]}
 
 
 def _label(label: str) -> str:

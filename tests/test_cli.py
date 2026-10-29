@@ -33,6 +33,7 @@ def master(config_data, monkeypatch):
     monkeypatch.setattr(cli, "_api", lambda c: None)
     monkeypatch.setattr(cli.Slap, "connect", lambda m: slap)
     monkeypatch.setattr(cli, "stored_request", lambda api, name: instances.get(name))
+    monkeypatch.setattr(cli.dev, "pushed_commit", lambda sw, commit: commit)
     return instances, slap
 
 

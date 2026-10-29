@@ -80,6 +80,52 @@ class Api:
             params["view"] = view
         return self._get_json(expand(self._template("traverse"), params))
 
+    def act(self, relative_url: str, action: str, fields: dict[str, str] | None = None) -> None:
+        """Submit one of a document's actions as the panel does: a fast input dialog
+        (add_slapos_software_type), a workflow transition (validate_action) or a script.
+
+        `fields` are keyed as the form keys them (field_your_software_type); every
+        other field of the form is sent with its default.
+        """
+        links = [
+            link
+            for name, value in self.get(relative_url, "view")["_links"].items()
+            if name.startswith("action_")
+            for link in (value if isinstance(value, list) else [value])
+        ]
+        href = next((link["href"] for link in links if link.get("name") == action), None)
+        if href is None:
+            names = sorted({link.get("name") for link in links})
+            raise MasterError(f"{relative_url} has no action {action!r}; it has: {', '.join(names)}")
+        form = self._get_json(href)["_embedded"]["_view"]
+        actions = form["_actions"]
+        data = {f["key"]: f["default"] or "" for f in form.values() if isinstance(f, dict) and "key" in f}
+        # The method is in _actions.put for dialogs, next to it for scripts.
+        data["dialog_method"] = actions["put"].get("action") or actions["action"]
+        self._post(actions["put"]["href"], data | (fields or {}))
+
+    def edit(self, relative_url: str, fields: dict[str, str]) -> None:
+        """Change fields of a document's view, keyed as the form keys them (field_my_title).
+
+        Base_edit skips the fields absent from the POST: the others keep their values.
+        """
+        view = self.get(relative_url, "view")["_embedded"]["_view"]
+        self._post(view["_actions"]["put"]["href"], {"form_id": view["form_id"]["default"], **fields})
+
+    def _post(self, url: str, data: dict) -> None:
+        try:
+            response = self._client.post(
+                url, data=data, extensions=self._extensions, headers={"Accept": "application/hal+json"}
+            )
+        except httpx2.TransportError as e:
+            raise MasterError(f"POST {url}: {e}") from e
+        if response.is_error:
+            raise MasterError(f"POST {url}: HTTP {response.status_code} {response.text[:200]}")
+        if response.headers.get("content-type", "").startswith("application/json"):
+            body = response.json()
+            if body.get("portal_status_level") == "error":
+                raise MasterError(f"POST {url}: {body.get('portal_status_message')}")
+
 
 def _get(client: httpx2.Client, url: str, extensions: dict | None = None) -> httpx2.Response:
     try:

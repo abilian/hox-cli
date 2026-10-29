@@ -191,3 +191,82 @@ def test_supply_payload():
 @pytest.mark.parametrize("name, expected", [("mynij-proxy-3", "mynij-proxy-4"), ("mynij-proxy", "mynij-proxy-2"), ("x-9", "x-10")])
 def test_next_name(name, expected):
     assert next_name(name) == expected
+
+
+DOC = {
+    "_links": {
+        "action_object_view": [{"name": "view", "href": "https://api.vifib.com/v"}],
+        "action_object_jio_fast_input": [
+            {"name": "add_slapos_software_type", "href": "https://api.vifib.com/dialog"},
+        ],
+    },
+    "_embedded": {"_view": {
+        "_actions": {"put": {"action": "Base_edit", "href": "https://api.vifib.com/doc/Base_edit"}},
+        "form_id": {"key": "form_id", "default": "SoftwareProduct_view"},
+    }},
+}
+DIALOG = {"_embedded": {"_view": {
+    "_actions": {"put": {"action": "SoftwareProduct_addSlapOSSoftwareType",
+                         "href": "https://api.vifib.com/doc/Base_callDialogMethod"}},
+    "dialog_id": {"key": "dialog_id", "default": "SoftwareProduct_viewSlapOSSoftwareTypeFastInputDialog"},
+    "form_id": {"key": "form_id", "default": "SoftwareProduct_view"},
+    "your_software_type": {"key": "field_your_software_type", "default": ""},
+}}}
+SCRIPT = {"_embedded": {"_view": {
+    "_actions": {"put": {"href": "https://api.vifib.com/project/Project_addSlapOSAllocationSupply"},
+                 "action": "Project_addSlapOSAllocationSupply", "method": "POST"},
+    "form_id": {"key": "form_id", "default": "Base_viewFakePythonScriptActionForm"},
+}}}
+
+
+def forms_api(dialog: dict, reply: httpx2.Response):
+    posts = []
+
+    def handler(request):
+        if request.method == "POST":
+            assert request.extensions["sni_hostname"] == "slap.vifib.com"
+            posts.append((str(request.url), parse_qs(request.content.decode())))
+            return reply
+        return httpx2.Response(200, json=dialog if request.url.path == "/dialog" else DOC)
+
+    return api_with(handler)[0], posts
+
+
+OK = httpx2.Response(201, json={"portal_status_message": "New Software Type created.", "portal_status_level": "success"})
+
+
+def test_act_submits_the_dialog_with_its_defaults():
+    api, posts = forms_api(DIALOG, OK)
+    api.act("doc", "add_slapos_software_type", {"field_your_software_type": "hox-test"})
+    assert posts == [("https://api.vifib.com/doc/Base_callDialogMethod", {
+        "dialog_id": ["SoftwareProduct_viewSlapOSSoftwareTypeFastInputDialog"],
+        "form_id": ["SoftwareProduct_view"],
+        "field_your_software_type": ["hox-test"],
+        "dialog_method": ["SoftwareProduct_addSlapOSSoftwareType"],
+    })]
+
+
+def test_act_runs_a_script_action():
+    api, posts = forms_api(SCRIPT, httpx2.Response(302, headers={"location": "https://api.vifib.com/x"}))
+    api.act("project", "add_slapos_software_type")
+    assert posts[0][0] == "https://api.vifib.com/project/Project_addSlapOSAllocationSupply"
+    assert posts[0][1]["dialog_method"] == ["Project_addSlapOSAllocationSupply"]
+
+
+def test_act_unknown_action_lists_the_known_ones():
+    api, _ = forms_api(DIALOG, OK)
+    with pytest.raises(MasterError, match="no action 'validate_action'; it has: add_slapos_software_type, view"):
+        api.act("doc", "validate_action")
+
+
+def test_act_reports_the_masters_error_message():
+    api, _ = forms_api(DIALOG, httpx2.Response(200, json={"portal_status_message": "Nope.", "portal_status_level": "error"}))
+    with pytest.raises(MasterError, match="Nope."):
+        api.act("doc", "add_slapos_software_type")
+
+
+def test_edit_posts_only_the_given_fields():
+    api, posts = forms_api(DIALOG, httpx2.Response(200, json={}))
+    api.edit("doc", {"field_my_description": "x"})
+    assert posts == [("https://api.vifib.com/doc/Base_edit",
+                      {"form_id": ["SoftwareProduct_view"], "field_my_description": ["x"]})]

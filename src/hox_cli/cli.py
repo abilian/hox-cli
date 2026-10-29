@@ -10,7 +10,7 @@ import httpx2
 from cyclopts import App, Parameter
 
 from . import config as config_module
-from . import dev
+from . import dev, panel
 from . import status as status_module
 from .config import Config, ConfigError, Software
 from .dev import DevError
@@ -223,7 +223,7 @@ def logs(
 
 
 def _url(sw: Software, pinned: str | None) -> str:
-    return sw.pinned_url(pinned) if pinned else sw.branch_url
+    return sw.pinned_url(dev.pushed_commit(sw, pinned)) if pinned else sw.branch_url
 
 
 def _confirm(question: str, yes: bool) -> None:
@@ -314,6 +314,47 @@ def destroy(name: str, *, yes: bool = False):
     _confirm(f"Destroy {name} ({existing.software_release})?", yes)
     Slap.connect(config.master).request(dataclasses.replace(existing, state="destroyed"))
     print(f"{name}: destruction requested")
+
+
+def _make_allocatable(software: str | None, pinned: str | None) -> None:
+    config = _config()
+    sw = config.software_named(software)
+    url = _url(sw, pinned)
+    panel.make_allocatable(_api(config), config, sw, url)
+    Slap.connect(config.master).supply(url, config.node.reference)
+    print(f"supply of {url} on {config.node.reference}: requested")
+
+
+@app.command
+def setup(software: str | None = None):
+    """One-time project setup: what we did in the panel, for the branch URL.
+
+    Software Product with the software type, branch URL as a release, Allocation
+    Supply on our node with the (release, type) cell ticked and validated, branch
+    URL supplied. Each step is skipped when already done.
+
+    Parameters
+    ----------
+    software
+        A [software.<name>] of hox.toml; optional when there is only one.
+    """
+    _make_allocatable(software, None)
+
+
+@app.command
+def release(commit: str, *, software: str | None = None):
+    """Make a pinned version allocatable: `hox setup`'s steps for the commit's URL.
+
+    Doesn't move the instance: `hox request --pinned COMMIT --replace` does.
+
+    Parameters
+    ----------
+    commit
+        The commit of the pinned URL (pushed: the node fetches it from GitHub).
+    software
+        A [software.<name>] of hox.toml; optional when there is only one.
+    """
+    _make_allocatable(software, commit)
 
 
 @app.meta.default

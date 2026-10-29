@@ -20,7 +20,7 @@ One Rapid.Space project, one compute node, a few software releases (mynij-proxy 
 
 - **Software**: a software release we develop, e.g. `mynij-proxy`. It has a repo, a branch, a path to its `software.cfg`, a Software Product in the project, and an instance name.
 - **Branch URL**: `https://raw.githubusercontent.com/<repo>/<branch>/<path>/software.cfg`. Registered once; the node rebuilds it in place. Used for development.
-- **Pinned URL**: the same with a commit instead of the branch. Used for versions that must be identifiable on the master.
+- **Pinned URL**: the same with a commit instead of the branch, always as a full SHA (GitHub serves short ones too, but each spelling is another URL for the master and another directory on the node). The commit must be on a branch of origin. Used for versions that must be identifiable on the master.
 - **Instance**: the instance tree we request (`mynij-proxy-3`), its partition, its connection parameters, its shared frontends.
 
 ### 1.3 Commands
@@ -62,7 +62,7 @@ Every command prints what it does in one line per step and fails with a non-zero
 
 `hox setup [SOFTWARE]`
 - One-time, idempotent project setup, the panel work of 2026-10-28/29: Software Product with the software type, branch URL as a release, Allocation Supply on our node with the cell ticked and validated, branch URL supplied. Prints what already existed and what it created.
-- `hox setup --frontend`: Software Product `apache-frontend` (release `http://git.erp5.org/gitweb/slapos.git/blob_plain/HEAD:/software/apache-frontend/software.cfg`, type `default`) and an Allocation Supply on the project's Remote Node to the CDN. Needs the Remote Node, which Rapid.Space support has to make possible (we're not a member of Canary.CDN, PROJ-318); fails with that explanation if there is none.
+- `hox setup --frontend` (not built yet, needs the Remote Node first): Software Product `apache-frontend` (release `http://git.erp5.org/gitweb/slapos.git/blob_plain/HEAD:/software/apache-frontend/software.cfg`, type `default`) and an Allocation Supply on the project's Remote Node to the CDN. Needs the Remote Node, which Rapid.Space support has to make possible (we're not a member of Canary.CDN, PROJ-318); fails with that explanation if there is none.
 
 `hox api get RELATIVE_URL [--view VIEW]`, `hox api search QUERY [--select FIELD…]` (read-only, for debugging)
 - Raw access to the master's API (what our ad-hoc scripts did), printing JSON.
@@ -104,6 +104,7 @@ hox-cli/
     node.py       # ssh/git helpers, log parsing
     status.py     # gathering and diagnosing for `hox status`
     dev.py        # the dev loop: pushed?, GitHub freshness, checks
+    panel.py      # `setup` and `release`: what we did in the panel's forms
   tests/
     fixtures/     # API replies and node logs recorded on 2026-10-29 (passwords redacted)
 ```
@@ -161,7 +162,12 @@ Two endpoints, both authenticated with the client certificate. TLS is verified: 
   - search: the root document's `raw_search` template with `query`, `select_list`, `limit` (what `slapos service list` uses);
   - read: `traverse` template with `relative_url` and an optional `view`;
   - forms: a document's `_links` give its actions (`action_object_jio_fast_input` → "Add Software Product", "Add Software Release", "Add Software Type", "Add Allocation Supply", "Add Remote Node"; `action_workflow` → validate, invalidate). Reading an action's view returns the form as JSON: fields with their `key`s and defaults, and `_actions.put` with the URL (`Base_callDialogMethod` or `Base_edit`) and the method name. Submitting = POST of the form fields (`form_id`, `dialog_id`, `dialog_method`, `field_your_…`).
-  - the Allocation Supply matrix is the `matrixbox` field of the supply line's `view`: one `field_matrixbox_allocable_cell_<r>_<t>_0` checkbox per (release, type), with hidden `…variation_category_list_cell_…` and `…predicate_category_list_cell_…` fields to send back unchanged.
+  - an action's form is read from the action link's own `href`: it carries `extra_param_json`, without which `form_id` comes back empty. Submitting = POST to `_actions.put.href` of every field's default plus `dialog_method` (in `_actions.put.action` for dialogs, `_actions.action` for scripts) and our values. Certificate auth is enough (tested 2026-10-29: add and delete a software type). A success answers 200/201 with `portal_status_level: success`; a form error 400 with the form re-rendered.
+  - `Base_edit` skips fields absent from the POST (their validator raises `KeyError`, which `validate_all` ignores), so an edit sends only what it changes (tested on a product's description).
+  - the Allocation Supply matrix is the `matrixbox` field of the supply line's `view`: one `field_matrixbox_allocable_cell_<r>_<t>_0` checkbox per (release, type), with hidden `…variation_category_list_cell_…` and `…predicate_category_list_cell_…` fields to send back unchanged. The matrix is validated as a whole: every field of every cell must be in the POST (checkboxes as `1`/`0`, lists newline-joined), or `Base_edit` skips the matrix.
+  - "Add Allocation Supply" on the project (`Project_addSlapOSAllocationSupply`) creates an invalidated supply titled "All compute nodes <date>" on all the project's validated nodes with allocation scope open, with one line per product of the project. Invalidating a supply (`slapos_panel_workflow_fast_invalidate`) adds the lines of products it lacks. Lines are edited on a validated supply without invalidating it.
+  - what a form creates shows up in the catalog a few seconds later (ERP5 indexes in the background): `setup` polls for it.
+  - the delete dialog of a release that a supply cell refers to answers 400 with no message: such a release stays in the product, unticked.
 
 `Api` finds forms and fields by their action name and field key, never by position or title, and fails with the list of what it found when one is missing (the panel's forms are not a public API and may change). After each change it reads the result back and checks it (e.g. the release URL is in the product, the cell is ticked, the supply is validated).
 
@@ -179,7 +185,7 @@ Facts read from the node: software dirs (`/opt/slapgrid/<md5(url)>`, `.completed
 
 ### 2.7 Errors and output
 
-- One exception type per boundary (`MasterError`, `ApiFormError`, `NodeError`, `ConfigError`), carrying the remote message. `cli.py` turns them into a one-line message and exit code 1; `--debug` shows the traceback and the HTTP exchange.
+- One exception type per boundary (`MasterError`, `NodeError`, `DevError`, `ConfigError`), carrying the remote message. `cli.py` turns them into a one-line message and exit code 1; `--debug` shows the traceback and the HTTP exchange.
 - Plain text output; `--json` on `status` and the `api` commands for scripts and agents.
 
 ### 2.8 Tests
@@ -193,7 +199,7 @@ Facts read from the node: software dirs (`/opt/slapgrid/<md5(url)>`, `.completed
 2. `rebuild`, `check`, `logs` (SSH; the daily loop).
 3. `supply`, `request`, `destroy` (slap protocol).
 4. Form submission spike: one harmless write (add a software type to the product and remove it again) to confirm that certificate auth works for form POSTs. If it doesn't, find out how the panel authenticates (cookie from a login) before going further.
-5. `setup`, `release`, `setup --frontend`.
+5. `setup`, `release`, `setup --frontend`. Done: `setup` and `release`, live-tested on 2026-10-29 for the parts that existed already and for a new release (added, cell ticked on the validated supply, supplied). Creating a product, a supply and its lines, and validating a supply are covered only by tests: they run for a new software. `setup --frontend` waits for the Remote Node.
 
 ## 4. Open questions
 

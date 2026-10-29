@@ -11,7 +11,7 @@ hox status                                # reads ../hox.toml (searched upward f
 
 Without installing: `uv run --project hox-cli hox status`.
 
-## Commands so far
+## Commands
 
 - `hox status [SOFTWARE] [--json]`: instance, partition (or why it isn't allocated), connection parameters, frontends, builds on the node, failing promises, whether GitHub serves the pushed commit.
 - `hox rebuild [SOFTWARE] [--software-only] [--no-wait]`: the dev loop. Refuses an unpushed branch, waits for raw.githubusercontent.com to serve the pushed files, rebuilds the branch URL in place on the node, redeploys, runs the checks.
@@ -20,6 +20,8 @@ Without installing: `uv run --project hox-cli hox status`.
 - `hox supply [SOFTWARE] [--pinned COMMIT] [--remove]`: supply (or remove) the branch or a pinned URL on our node.
 - `hox request [SOFTWARE] [--name NAME] [--pinned COMMIT] [--replace] [--yes]`: request the instance; re-requesting re-sends the original request. `--replace` destroys an instance on another URL and requests the next name.
 - `hox destroy NAME [--yes]`: destroy an instance.
+- `hox setup [SOFTWARE]`: the one-time panel work for the branch URL: Software Product, software type, release, Allocation Supply on our node with the cell ticked, validated; then supplies the URL. Skips what exists.
+- `hox release COMMIT [--software NAME]`: the same for a pushed commit's pinned URL (full SHA). Doesn't move the instance.
 - `hox api get RELATIVE_URL [--view VIEW]`, `hox api search QUERY [--select FIELD …] [--limit N]`: raw read-only access to the master's API.
 
 ## Tests

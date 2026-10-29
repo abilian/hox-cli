@@ -31,6 +31,18 @@ def require_pushed(sw: Software) -> str:
     return head
 
 
+def pushed_commit(sw: Software, commit: str) -> str:
+    """The full SHA of commit, if a branch of origin contains it (as last fetched).
+
+    Pinned URLs use it: GitHub also serves short SHAs, but each spelling is
+    another URL for the master and another software directory on the node.
+    """
+    sha = git(sw.checkout, "rev-parse", "--verify", f"{commit}^{{commit}}").strip()
+    if not git(sw.checkout, "branch", "-r", "--contains", sha).strip():
+        raise DevError(f"{commit} is on no branch of origin (as last fetched): push it first")
+    return sha
+
+
 def software_files(sw: Software, commit: str) -> dict[str, str]:
     """The files of the software's directory at commit, as the node will fetch them."""
     directory = str(PurePosixPath(sw.path).parent)

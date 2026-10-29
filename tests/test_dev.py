@@ -135,3 +135,15 @@ def test_run_checks_fills_connection_parameters_and_skips_unpublished():
     assert [(r.name, r.ok) for r in results] == [("ping", True), ("frontend", False)]
     assert results[1].detail == "url is not published yet"
     assert node.commands == [curl_command(PING, "https://[::1]:3001/ping")]
+
+
+def test_pushed_commit_is_the_full_sha(repo):
+    git(repo, "fetch", "-q", "origin")
+    head = git(repo, "rev-parse", "HEAD").strip()
+    assert dev.pushed_commit(software(repo), head[:7]) == head
+
+
+def test_pushed_commit_refuses_local_commits(repo):
+    git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "local")
+    with pytest.raises(DevError, match="on no branch of origin"):
+        dev.pushed_commit(software(repo), "HEAD")
