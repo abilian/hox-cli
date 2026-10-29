@@ -1,0 +1,45 @@
+{
+ "_sort_on": null,
+ "_embedded": {
+  "contents": [
+   {
+    "aggregate_title_list": [
+     "abilian-hox-node-1"
+    ],
+    "validation_state": "validated",
+    "_links": {
+     "self": {
+      "href": "urn:jio:get:allocation_supply_module/20261029.023-A00FDF"
+     }
+    },
+    "relative_url": "allocation_supply_module/20261029.023-A00FDF",
+    "title": "mynij-proxy on abilian-hox-node-1"
+   }
+  ]
+ },
+ "_debug": "search",
+ "_select_list": [
+  "title",
+  "relative_url",
+  "validation_state",
+  "aggregate_title_list"
+ ],
+ "_local_roles": null,
+ "_query": "portal_type:\"Allocation Supply\" AND validation_state:validated AND destination_project_reference:=\"PROJ-20261026.009-F09D5B\"",
+ "_limit": "50",
+ "_links": {
+  "self": {
+   "href": "https://api.vifib.com/ERP5Document_getHateoas"
+  },
+  "portal": {
+   "href": "urn:jio:get:erp5",
+   "name": "ERP5"
+  },
+  "site_root": {
+   "href": "urn:jio:get:web_site_module/slapos_hateoas",
+   "name": "SlapOS Hateoas"
+  }
+ },
+ "_group_by": null,
+ "_selection_domain": null
+}

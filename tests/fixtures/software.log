@@ -1,0 +1,45 @@
+[2026-10-27 22:13:10,001] INFO     Processing software releases...
+[2026-10-27 22:14:20,153] INFO     
+[2026-10-27 22:14:20,153] INFO     An internal error occurred due to a bug in either zc.buildout or in a
+[2026-10-27 22:14:20,153] INFO     recipe being used:
+[2026-10-27 22:14:20,156] INFO     Traceback (most recent call last):
+[2026-10-27 22:14:20,157] INFO       File "/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f/eggs/zc.buildout-3.0.1+slapos012-py3.13.egg/zc/buildout/buildout.py", line 2684, in main
+[2026-10-27 22:14:20,157] INFO         getattr(buildout, command)(args)
+[2026-10-27 22:14:20,157] INFO         ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+[2026-10-27 22:14:20,157] INFO       File "/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f/eggs/zc.buildout-3.0.1+slapos012-py3.13.egg/zc/buildout/buildout.py", line 883, in install
+[2026-10-27 22:14:20,157] INFO         self._install_parts(install_args)
+[2026-10-27 22:14:20,157] INFO         ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+[2026-10-27 22:14:20,157] INFO       File "/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f/eggs/zc.buildout-3.0.1+slapos012-py3.13.egg/zc/buildout/buildout.py", line 1055, in _install_parts
+[2026-10-27 22:14:20,157] INFO         installed_files = self[part]._call(recipe.install)
+[2026-10-27 22:14:20,157] INFO       File "/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f/eggs/zc.buildout-3.0.1+slapos012-py3.13.egg/zc/buildout/buildout.py", line 1966, in _call
+[2026-10-27 22:14:20,157] INFO         return f()
+[2026-10-27 22:14:20,157] INFO       File "/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f/eggs/zc.recipe.egg-2.0.8.dev0+slapos012-py3.13.egg/zc/recipe/egg/custom.py", line 80, in install
+[2026-10-27 22:14:20,157] INFO         return self._install()
+[2026-10-27 22:14:20,157] INFO                ~~~~~~~~~~~~~^^
+[2026-10-27 22:14:20,157] INFO       File "/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f/eggs/zc.recipe.egg-2.0.8.dev0+slapos012-py3.13.egg/zc/recipe/egg/custom.py", line 166, in _install
+[2026-10-27 22:14:20,157] INFO         return zc.buildout.easy_install.develop(
+[2026-10-27 22:14:20,157] INFO                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+[2026-10-27 22:14:20,157] INFO             options['setup'], options['_d'], self.build_ext)
+[2026-10-27 22:14:20,157] INFO             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[2026-10-27 22:14:20,157] INFO       File "/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f/eggs/zc.buildout-3.0.1+slapos012-py3.13.egg/zc/buildout/easy_install.py", line 1277, in develop
+[2026-10-27 22:14:20,157] INFO         lib_dir, scripts_dir = call_pip_editable(
+[2026-10-27 22:14:20,157] INFO                                ~~~~~~~~~~~~~~~~~^
+[2026-10-27 22:14:20,157] INFO             directory, tmp3, options, verbosity=verbosity)
+[2026-10-27 22:14:20,157] INFO             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[2026-10-27 22:14:20,158] INFO       File "/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f/eggs/zc.buildout-3.0.1+slapos012-py3.13.egg/zc/buildout/easy_install.py", line 2053, in call_pip_editable
+[2026-10-27 22:14:20,158] INFO         call_pip_command(
+[2026-10-27 22:14:20,158] INFO         ~~~~~~~~~~~~~~~~^
+[2026-10-27 22:14:20,158] INFO             ['install', '-t', dest], ['--editable', path],
+[2026-10-27 22:14:20,158] INFO             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[2026-10-27 22:14:20,158] INFO             options, verbosity)
+[2026-10-27 22:14:20,158] INFO             ^^^^^^^^^^^^^^^^^^^
+[2026-10-27 22:14:20,158] INFO       File "/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f/eggs/zc.buildout-3.0.1+slapos012-py3.13.egg/zc/buildout/easy_install.py", line 2039, in call_pip_command
+[2026-10-27 22:14:20,158] INFO         subprocess.check_call(args, env=env)
+[2026-10-27 22:14:20,158] INFO         ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+[2026-10-27 22:14:20,158] INFO       File "/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f/parts/python3/lib/python3.13/subprocess.py", line 420, in check_call
+[2026-10-27 22:14:20,158] INFO         raise CalledProcessError(retcode, cmd)
+[2026-10-27 22:14:20,158] INFO     subprocess.CalledProcessError: Command '['/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f/parts/python3/bin/python3', '-m', 'pip', 'install', '-t', '/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f/develop-eggs/tmpep1d6mcmbuild', '--no-deps', '-q', '--no-index', '--no
+[2026-10-27 22:14:20,281] ERROR    Failed to run buildout profile in directory '/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f'
+[2026-10-28 08:27:10,001] INFO     Processing software releases...
+[2026-10-28 08:27:47,852] INFO     Error: Error downloading https://raw.githubusercontent.com/abilian/slapos_abilian_edge/d797091f427246b48071b8fd042685652571c456/component/dcron/support-tmpdir-and-clean-up-temp-files-on-exit.patch: [Errno 104] Connection reset by peer
+[2026-10-28 08:27:47,953] ERROR    Failed to run buildout profile in directory '/opt/slapgrid/d09513ebeef620b179b45cac7f97bb88'

@@ -1,0 +1,115 @@
+{
+ "_sort_on": null,
+ "_embedded": {
+  "contents": [
+   {
+    "getConnectionXmlAsDict": {},
+    "relative_url": "software_instance_module/20261029.012-65C5FDFC",
+    "title": "Mynij Proxy Frontend",
+    "source_reference": "default",
+    "portal_type": "Slave Instance",
+    "SoftwareInstance_getNewsDict": {
+     "reference": "SOFTINST-326593",
+     "text": "#nodata is a slave SOFTINST-326593",
+     "portal_type": "Slave Instance",
+     "user": "SlapOS Master",
+     "is_slave": 1,
+     "monitor_url": "https://monitor.app.officejs.com/#/?username=admin&slapos_master_url=https%3A//api.vifib.com&url=/public/feeds&query=portal_type%3A%22Software%20Instance%22%20AND%20title%3A%22Mynij%20Proxy%20Frontend%22%20AND%20specialise_title%3A%22mynij-proxy-3%22&password=REDACTED&page=ojsm_landing"
+    },
+    "_links": {
+     "self": {
+      "href": "urn:jio:get:software_instance_module/20261029.012-65C5FDFC"
+     }
+    },
+    "slap_state": "start_requested",
+    "aggregate_title": null,
+    "url_string": "http://git.erp5.org/gitweb/slapos.git/blob_plain/HEAD:/software/apache-frontend/software.cfg"
+   },
+   {
+    "getConnectionXmlAsDict": {},
+    "relative_url": "software_instance_module/20261029.017-83D930C7",
+    "title": "Monitor Frontend mynij-proxy-3",
+    "source_reference": "default",
+    "portal_type": "Slave Instance",
+    "SoftwareInstance_getNewsDict": {
+     "reference": "SOFTINST-326592",
+     "text": "#nodata is a slave SOFTINST-326592",
+     "portal_type": "Slave Instance",
+     "user": "SlapOS Master",
+     "is_slave": 1,
+     "monitor_url": "https://monitor.app.officejs.com/#/?username=admin&slapos_master_url=https%3A//api.vifib.com&url=/public/feeds&query=portal_type%3A%22Software%20Instance%22%20AND%20title%3A%22Monitor%20Frontend%20mynij-proxy-3%22%20AND%20specialise_title%3A%22mynij-proxy-3%22&password=REDACTED&page=ojsm_landing"
+    },
+    "_links": {
+     "self": {
+      "href": "urn:jio:get:software_instance_module/20261029.017-83D930C7"
+     }
+    },
+    "slap_state": "start_requested",
+    "aggregate_title": null,
+    "url_string": "http://git.erp5.org/gitweb/slapos.git/blob_plain/HEAD:/software/apache-frontend/software.cfg"
+   },
+   {
+    "getConnectionXmlAsDict": {
+     "monitor-setup-url": "https://monitor.app.officejs.com/#page=ojsm_landing&url=/public/feeds&username=admin&password=REDACTED",
+     "url": null,
+     "backend-url": "https://[2401:5180:12::2]:3001",
+     "monitor-base-url": null
+    },
+    "relative_url": "software_instance_module/20261029.007-5D8E8332",
+    "title": "mynij-proxy-3",
+    "source_reference": "default",
+    "portal_type": "Software Instance",
+    "SoftwareInstance_getNewsDict": {
+     "reference": "SOFTINST-326576",
+     "text": "#error while instanciating: h output: ERROR: Invalid URL '': No scheme supplied. Perhaps you meant https://?",
+     "created_at": "Thu, 29 Oct 2026 11:14:11 GMT",
+     "since": "Thu, 29 Oct 2026 08:19:17 GMT",
+     "no_data_since_5_minutes": 0,
+     "state": "",
+     "user": "COMP-20261027.021-9D1365",
+     "no_data_since_15_minutes": 0,
+     "portal_type": "Software Instance",
+     "monitor_url": "https://monitor.app.officejs.com/#/?username=admin&slapos_master_url=https%3A//api.vifib.com&url=/public/feeds&query=portal_type%3A%22Software%20Instance%22%20AND%20title%3A%22mynij-proxy-3%22%20AND%20specialise_title%3A%22mynij-proxy-3%22&password=REDACTED&page=ojsm_landing"
+    },
+    "_links": {
+     "self": {
+      "href": "urn:jio:get:software_instance_module/20261029.007-5D8E8332"
+     }
+    },
+    "slap_state": "start_requested",
+    "aggregate_title": "slappart0",
+    "url_string": "https://raw.githubusercontent.com/abilian/slapos_abilian_edge/mynij-proxy/software/mynij-proxy/software.cfg"
+   }
+  ]
+ },
+ "_debug": "search",
+ "_select_list": [
+  "title",
+  "relative_url",
+  "portal_type",
+  "slap_state",
+  "aggregate_title",
+  "url_string",
+  "source_reference",
+  "getConnectionXmlAsDict",
+  "SoftwareInstance_getNewsDict"
+ ],
+ "_local_roles": null,
+ "_query": "portal_type:(\"Software Instance\",\"Slave Instance\") AND validation_state:validated AND default_specialise_title:=\"mynij-proxy-3\"",
+ "_limit": "50",
+ "_links": {
+  "self": {
+   "href": "https://api.vifib.com/ERP5Document_getHateoas"
+  },
+  "portal": {
+   "href": "urn:jio:get:erp5",
+   "name": "ERP5"
+  },
+  "site_root": {
+   "href": "urn:jio:get:web_site_module/slapos_hateoas",
+   "name": "SlapOS Hateoas"
+  }
+ },
+ "_group_by": null,
+ "_selection_domain": null
+}

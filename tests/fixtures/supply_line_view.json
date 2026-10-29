@@ -1,0 +1,626 @@
+{
+ "_embedded": {
+  "_view": {
+   "_embedded": {
+    "form_definition": {
+     "update_action_title": "",
+     "action_title": "",
+     "_debug": "traverse",
+     "pt": "form_view",
+     "title": "View",
+     "group_list": [
+      [
+       "left",
+       [
+        [
+         "my_resource_title",
+         {
+          "meta_type": "ProxyField"
+         }
+        ]
+       ],
+       null
+      ],
+      [
+       "right",
+       [
+        [
+         "my_p_variation_base_category_list",
+         {
+          "meta_type": "MultiListField"
+         }
+        ]
+       ],
+       null
+      ],
+      [
+       "bottom",
+       [
+        [
+         "matrixbox",
+         {
+          "meta_type": "MatrixBox"
+         }
+        ],
+        [
+         "mapped_value_property_list",
+         {
+          "meta_type": "ProxyField"
+         }
+        ],
+        [
+         "form_id",
+         {
+          "meta_type": "StringField"
+         }
+        ]
+       ],
+       null
+      ]
+     ],
+     "_links": {
+      "traversed_document": {
+       "href": "urn:jio:get:AllocationSupplyLine_view",
+       "name": "AllocationSupplyLine_view",
+       "title": "View"
+      },
+      "action_object_search": {
+       "title": "Search",
+       "href": "https://api.vifib.com/AllocationSupplyLine_view/Folder_viewSearchDialog",
+       "name": "search",
+       "icon": null
+      },
+      "action_object_list_action": {
+       "title": "Delete",
+       "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=AllocationSupplyLine_view&view=delete_document_list",
+       "name": "delete_document_list",
+       "icon": null
+      },
+      "action_object_jio_exchange": {
+       "title": "Export to Spreadsheet",
+       "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=AllocationSupplyLine_view&view=ods_export",
+       "name": "ods_export",
+       "icon": null
+      },
+      "action_object_jump": {
+       "title": "Related Objects",
+       "href": "https://api.vifib.com/AllocationSupplyLine_view/Base_jumpToRelatedObjectList?category.category_uid=176837541",
+       "name": "jump_related_object",
+       "icon": null
+      },
+      "action_object_jio_print": {
+       "title": "Print",
+       "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=AllocationSupplyLine_view&view=print",
+       "name": "print",
+       "icon": null
+      },
+      "self": {
+       "href": "https://api.vifib.com/ERP5Document_getHateoas"
+      },
+      "action_object_hidden": [
+       {
+        "title": "View Historical Comparison",
+        "href": "https://api.vifib.com/AllocationSupplyLine_view/Base_viewHistoricalComparison",
+        "name": "view_historical_comparison",
+        "icon": null
+       },
+       {
+        "title": "View Historical Diff",
+        "href": "https://api.vifib.com/AllocationSupplyLine_view/Base_viewHistoricalComparisonDiff",
+        "name": "view_historical_diff",
+        "icon": null
+       }
+      ],
+      "action_user": [
+       {
+        "title": "Preferences",
+        "href": "https://api.vifib.com/personalize_form",
+        "name": "preferences",
+        "icon": null
+       },
+       {
+        "title": "Log out",
+        "href": "https://api.vifib.com/logout",
+        "name": "logout",
+        "icon": null
+       }
+      ],
+      "site_root": {
+       "href": "urn:jio:get:web_site_module/slapos_hateoas",
+       "name": "SlapOS Hateoas"
+      },
+      "action_object_view": {
+       "title": "History",
+       "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=AllocationSupplyLine_view&view=history",
+       "name": "history",
+       "icon": null
+      },
+      "action_object_action": {
+       "title": "Diff Object",
+       "href": "https://api.vifib.com/AllocationSupplyLine_view/ERP5Site_viewDiffTwoObjectDialog?your_first_path=AllocationSupplyLine_view&your_second_path=AllocationSupplyLine_view",
+       "name": "diff_object_action",
+       "icon": null
+      },
+      "action_global": [
+       {
+        "title": "Support Requests to Open",
+        "href": "https://api.vifib.com/support_request_module?simulation_state=submitted&portal_type:list=Support Request&local_roles:list=Assignor&reset:int=1",
+        "name": "support requests to open (1)",
+        "icon": ""
+       },
+       {
+        "title": "Update Credentials",
+        "href": "https://api.vifib.com/ERP5Site_viewNewPersonCredentialUpdateDialog",
+        "name": "update_credentials",
+        "icon": null
+       }
+      ],
+      "portal": {
+       "href": "urn:jio:get:erp5",
+       "name": "ERP5"
+      },
+      "action_object_sort": {
+       "title": "Sort",
+       "href": "https://api.vifib.com/AllocationSupplyLine_view/Folder_viewSortOnDialog",
+       "name": "sort_on",
+       "icon": null
+      },
+      "action_object_ui": {
+       "title": "Modify UI",
+       "href": "https://api.vifib.com/AllocationSupplyLine_view/Base_viewUIDialog",
+       "name": "list_ui",
+       "icon": null
+      },
+      "action_object_jio_view": {
+       "title": "Definition View",
+       "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=AllocationSupplyLine_view&view=definition_view",
+       "name": "definition_view",
+       "icon": ""
+      },
+      "type": {
+       "href": "urn:jio:get:portal_types/ERP5 Form",
+       "name": "ERP5 Form"
+      },
+      "view": {
+       "title": "History",
+       "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=AllocationSupplyLine_view&view=history",
+       "name": "history",
+       "icon": null
+      }
+     },
+     "action": "Base_edit",
+     "update_action": ""
+    }
+   },
+   "form_id": {
+    "required": 1,
+    "description": "",
+    "key": "form_id",
+    "css_class": "",
+    "default": "AllocationSupplyLine_view",
+    "editable": 0,
+    "hidden": 1,
+    "title": "form_id",
+    "type": "StringField"
+   },
+   "mapped_value_property_list": {
+    "autocomplete": null,
+    "default": [
+     "base_price",
+     "base_unit_price",
+     "slice_base_price",
+     "slice_quantity_range"
+    ],
+    "description": "",
+    "key": "field_mapped_value_property_list",
+    "title": "Modified categories",
+    "editable": 1,
+    "css_class": "",
+    "hidden": 1,
+    "required": 0,
+    "type": "LinesField"
+   },
+   "my_resource_title": {
+    "sort": [],
+    "relation_item_relative_url": [
+     "software_product_module/20261029.023-4ADA05"
+    ],
+    "relation_item_key": "subfield_field_my_resource_title_item",
+    "description": "A resource in ERP5 can be a product or a service. This term will be found in orders for instance, or accounting and inventories.",
+    "search_view": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF%2F1&view=Base_viewRelatedObjectList&extra_param_json=eyJmaWVsZF9pZCI6ICJteV9yZXNvdXJjZV90aXRsZSIsICJvcmlnaW5hbF9mb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlMaW5lX3ZpZXcifQ==",
+    "catalog_index": "title",
+    "editable": 1,
+    "allow_creation": 0,
+    "allow_jump": 1,
+    "key": "field_my_resource_title",
+    "query": "urn:jio:allDocs?query=portal_type%3A%22Software%20Product%22%20AND%20follow_up__uid%3A189063300L",
+    "portal_types": [
+     "Software Product"
+    ],
+    "translated_portal_types": [
+     "Software Product"
+    ],
+    "title": "Product or Service",
+    "default": [
+     "mynij-proxy"
+    ],
+    "css_class": "",
+    "relation_field_id": "subfield_field_my_resource_title_relation",
+    "required": 0,
+    "autocomplete": "",
+    "url": "allocation_supply_module/20261029.023-A00FDF/1",
+    "relation_item_uid": [
+     189047676
+    ],
+    "hidden": 0,
+    "type": "RelationStringField"
+   },
+   "my_p_variation_base_category_list": {
+    "description": "",
+    "title": "Base Variation Axes",
+    "default": [
+     "software_release",
+     "software_type"
+    ],
+    "css_class": "",
+    "sub_input_key": "default_subfield_field_my_p_variation_base_category_list_default:list:int",
+    "required": 0,
+    "editable": 1,
+    "autocomplete": null,
+    "sub_select_key": "subfield_field_my_p_variation_base_category_list_default:list",
+    "key": "field_my_p_variation_base_category_list",
+    "items": [
+     [
+      "Software Release",
+      "software_release"
+     ],
+     [
+      "Software Type",
+      "software_type"
+     ]
+    ],
+    "hidden": 0,
+    "type": "MultiListField"
+   },
+   "_links": {
+    "traversed_document": {
+     "href": "urn:jio:get:allocation_supply_module/20261029.023-A00FDF/1",
+     "name": "allocation_supply_module/20261029.023-A00FDF/1",
+     "title": "mynij-proxy"
+    },
+    "self": {
+     "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/1/AllocationSupplyLine_view"
+    },
+    "form_definition": {
+     "href": "urn:jio:get:portal_skins/slapos_cloud/AllocationSupplyLine_view",
+     "name": "AllocationSupplyLine_view"
+    }
+   },
+   "matrixbox": {
+    "autocomplete": null,
+    "description": "",
+    "key": "field_matrixbox",
+    "title": "matrixbox",
+    "editable": 1,
+    "css_class": "",
+    "hidden": 0,
+    "template_field_dict": {
+     "matrixbox_variation_category_list": {
+      "autocomplete": null,
+      "default": [],
+      "description": "",
+      "key": "field_matrixbox_variation_category_list",
+      "title": "matrixbox_predicate_value",
+      "editable": 1,
+      "css_class": "",
+      "hidden": 1,
+      "required": 0,
+      "type": "LinesField"
+     },
+     "matrixbox_allocable": {
+      "autocomplete": null,
+      "default": 0,
+      "description": "",
+      "key": "field_matrixbox_allocable",
+      "title": "Allocable",
+      "editable": 1,
+      "css_class": "",
+      "hidden": 0,
+      "required": 0,
+      "type": "CheckBoxField"
+     },
+     "matrixbox_predicate_category_list": {
+      "autocomplete": null,
+      "default": [],
+      "description": "",
+      "key": "field_matrixbox_predicate_category_list",
+      "title": "matrixbox_predicate_category_list",
+      "editable": 1,
+      "css_class": "",
+      "hidden": 1,
+      "required": 0,
+      "type": "LinesField"
+     }
+    },
+    "type": "MatrixBox",
+    "data": [
+     [
+      [
+       null,
+       "Software Type/default"
+      ],
+      [
+       "Software Release/https://raw.githubusercontent.com/abilian/slapos_abilian_edge/d797091f427246b48071b8fd042685652571c456/software/mynij-proxy/software.cfg",
+       {
+        "default": 1,
+        "field_id": "matrixbox_allocable",
+        "value": 1,
+        "key": "matrixbox_allocable_cell_0_0_0",
+        "type": "CheckBoxField",
+        "error_text": ""
+       },
+       {
+        "default": [
+         "software_release/software_product_module/20261029.023-4ADA05/1",
+         "software_type/software_product_module/20261029.023-4ADA05/2"
+        ],
+        "field_id": "matrixbox_variation_category_list",
+        "value": [
+         "software_release/software_product_module/20261029.023-4ADA05/1",
+         "software_type/software_product_module/20261029.023-4ADA05/2"
+        ],
+        "key": "matrixbox_variation_category_list_cell_0_0_0",
+        "type": "LinesField",
+        "error_text": ""
+       },
+       {
+        "default": [
+         "software_release/software_product_module/20261029.023-4ADA05/1",
+         "software_type/software_product_module/20261029.023-4ADA05/2"
+        ],
+        "field_id": "matrixbox_predicate_category_list",
+        "value": [
+         "software_release/software_product_module/20261029.023-4ADA05/1",
+         "software_type/software_product_module/20261029.023-4ADA05/2"
+        ],
+        "key": "matrixbox_predicate_category_list_cell_0_0_0",
+        "type": "LinesField",
+        "error_text": ""
+       }
+      ],
+      [
+       "Software Release/https://raw.githubusercontent.com/abilian/slapos_abilian_edge/mynij-proxy/software/mynij-proxy/software.cfg",
+       {
+        "default": 1,
+        "field_id": "matrixbox_allocable",
+        "value": 1,
+        "key": "matrixbox_allocable_cell_1_0_0",
+        "type": "CheckBoxField",
+        "error_text": ""
+       },
+       {
+        "default": [
+         "software_release/software_product_module/20261029.023-4ADA05/3",
+         "software_type/software_product_module/20261029.023-4ADA05/2"
+        ],
+        "field_id": "matrixbox_variation_category_list",
+        "value": [
+         "software_release/software_product_module/20261029.023-4ADA05/3",
+         "software_type/software_product_module/20261029.023-4ADA05/2"
+        ],
+        "key": "matrixbox_variation_category_list_cell_1_0_0",
+        "type": "LinesField",
+        "error_text": ""
+       },
+       {
+        "default": [
+         "software_release/software_product_module/20261029.023-4ADA05/3",
+         "software_type/software_product_module/20261029.023-4ADA05/2"
+        ],
+        "field_id": "matrixbox_predicate_category_list",
+        "value": [
+         "software_release/software_product_module/20261029.023-4ADA05/3",
+         "software_type/software_product_module/20261029.023-4ADA05/2"
+        ],
+        "key": "matrixbox_predicate_category_list_cell_1_0_0",
+        "type": "LinesField",
+        "error_text": ""
+       }
+      ]
+     ]
+    ]
+   },
+   "_actions": {
+    "put": {
+     "action": "Base_edit",
+     "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/1/Base_edit",
+     "method": "POST"
+    }
+   }
+  }
+ },
+ "_links": {
+  "action_object_delete_action": {
+   "title": "Delete Document",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF%2F1&view=delete_document&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlMaW5lX3ZpZXcifQ==",
+   "name": "delete_document",
+   "icon": null
+  },
+  "action_object_search": {
+   "title": "Search",
+   "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/1/Folder_viewSearchDialog",
+   "name": "search",
+   "icon": null
+  },
+  "action_object_jio_report": {
+   "title": "ZODB History",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF%2F1&view=zodb_history&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlMaW5lX3ZpZXcifQ==",
+   "name": "zodb_history",
+   "icon": null
+  },
+  "action_object_ui": {
+   "title": "Modify UI",
+   "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/1/Base_viewUIDialog",
+   "name": "list_ui",
+   "icon": null
+  },
+  "action_global": [
+   {
+    "title": "Support Requests to Open",
+    "href": "https://api.vifib.com/support_request_module?simulation_state=submitted&portal_type:list=Support Request&local_roles:list=Assignor&reset:int=1",
+    "name": "support requests to open (1)",
+    "icon": ""
+   },
+   {
+    "title": "Update Credentials",
+    "href": "https://api.vifib.com/ERP5Site_viewNewPersonCredentialUpdateDialog",
+    "name": "update_credentials",
+    "icon": null
+   }
+  ],
+  "action_object_sort": {
+   "title": "Sort",
+   "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/1/Folder_viewSortOnDialog",
+   "name": "sort_on",
+   "icon": null
+  },
+  "action_object_jio_print": {
+   "title": "Print",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF%2F1&view=print&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlMaW5lX3ZpZXcifQ==",
+   "name": "print",
+   "icon": null
+  },
+  "action_object_clone_action": {
+   "title": "Clone Document",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF%2F1&view=clone_document&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlMaW5lX3ZpZXcifQ==",
+   "name": "clone_document",
+   "icon": null
+  },
+  "self": {
+   "href": "https://api.vifib.com/ERP5Document_getHateoas"
+  },
+  "action_object_hidden": [
+   {
+    "title": "View Historical Comparison",
+    "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/1/Base_viewHistoricalComparison",
+    "name": "view_historical_comparison",
+    "icon": null
+   },
+   {
+    "title": "View Historical Diff",
+    "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/1/Base_viewHistoricalComparisonDiff",
+    "name": "view_historical_diff",
+    "icon": null
+   }
+  ],
+  "type": {
+   "href": "urn:jio:get:portal_types/Allocation Supply Line",
+   "name": "Allocation Supply Line"
+  },
+  "parent": {
+   "href": "urn:jio:get:allocation_supply_module/20261029.023-A00FDF",
+   "name": "mynij-proxy on abilian-hox-node-1"
+  },
+  "site_root": {
+   "href": "urn:jio:get:web_site_module/slapos_hateoas",
+   "name": "SlapOS Hateoas"
+  },
+  "action_object_view": [
+   {
+    "title": "View",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF%2F1&view=view",
+    "name": "view",
+    "icon": ""
+   },
+   {
+    "title": "Panel View",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF%2F1&view=slapos_panel_view",
+    "name": "slapos_panel_view",
+    "icon": ""
+   },
+   {
+    "title": "History",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF%2F1&view=history",
+    "name": "history",
+    "icon": null
+   }
+  ],
+  "portal": {
+   "href": "urn:jio:get:erp5",
+   "name": "ERP5"
+  },
+  "action_user": [
+   {
+    "title": "Preferences",
+    "href": "https://api.vifib.com/personalize_form",
+    "name": "preferences",
+    "icon": null
+   },
+   {
+    "title": "Log out",
+    "href": "https://api.vifib.com/logout",
+    "name": "logout",
+    "icon": null
+   }
+  ],
+  "traversed_document": {
+   "href": "urn:jio:get:allocation_supply_module/20261029.023-A00FDF/1",
+   "name": "allocation_supply_module/20261029.023-A00FDF/1",
+   "title": "mynij-proxy"
+  },
+  "action_object_jio_exchange": {
+   "title": "Export to Spreadsheet",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF%2F1&view=ods_export&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlMaW5lX3ZpZXcifQ==",
+   "name": "ods_export",
+   "icon": null
+  },
+  "action_object_jump": {
+   "title": "Related Objects",
+   "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/1/Base_jumpToRelatedObjectList?category.category_uid=189051572",
+   "name": "jump_related_object",
+   "icon": null
+  },
+  "action_object_action": {
+   "title": "Diff Object",
+   "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/1/ERP5Site_viewDiffTwoObjectDialog?your_first_path=allocation_supply_module/20261029.023-A00FDF/1&your_second_path=allocation_supply_module/20261029.023-A00FDF/1",
+   "name": "diff_object_action",
+   "icon": null
+  },
+  "view": [
+   {
+    "title": "View",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF%2F1&view=view",
+    "name": "view",
+    "icon": ""
+   },
+   {
+    "title": "Panel View",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF%2F1&view=slapos_panel_view",
+    "name": "slapos_panel_view",
+    "icon": ""
+   },
+   {
+    "title": "History",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF%2F1&view=history",
+    "name": "history",
+    "icon": null
+   }
+  ],
+  "action_object_list_action": [
+   {
+    "title": "Paste",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF%2F1&view=paste_document_list&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlMaW5lX3ZpZXcifQ==",
+    "name": "paste_document_list",
+    "icon": null
+   },
+   {
+    "title": "Delete",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF%2F1&view=delete_document_list&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlMaW5lX3ZpZXcifQ==",
+    "name": "delete_document_list",
+    "icon": null
+   }
+  ]
+ },
+ "_debug": "traverse",
+ "title": "mynij-proxy"
+}

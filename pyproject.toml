@@ -1,0 +1,22 @@
+[project]
+name = "hox-cli"
+version = "0.1.0"
+description = "Drive our SlapOS work on Rapid.Space (master, project, compute node) from the terminal"
+requires-python = ">=3.12"
+dependencies = [
+    "cyclopts>=5.3",
+    "httpx2>=2.16",
+]
+
+[project.scripts]
+hox = "hox_cli.cli:run"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,260 @@
+{
+ "default_view": "view",
+ "_actions": {
+  "bulk": {
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=bulk",
+   "method": "POST",
+   "name": "Bulk"
+  },
+  "add": {
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=newContent",
+   "method": "POST",
+   "name": "New Content"
+  }
+ },
+ "_links": {
+  "action_object_delete_action": {
+   "title": "Delete Document",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=delete_document",
+   "name": "delete_document",
+   "icon": null
+  },
+  "traverse": {
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse{&relative_url,view}",
+   "name": "Traverse",
+   "templated": true
+  },
+  "action_object_search": {
+   "title": "Search",
+   "href": "https://api.vifib.com/Folder_viewSearchDialog",
+   "name": "search",
+   "icon": null
+  },
+  "action_object_ui": {
+   "title": "Modify UI",
+   "href": "https://api.vifib.com/Base_viewUIDialog",
+   "name": "list_ui",
+   "icon": null
+  },
+  "action_global": [
+   {
+    "title": "Support Requests to Open",
+    "href": "https://api.vifib.com/support_request_module?simulation_state=submitted&portal_type:list=Support Request&local_roles:list=Assignor&reset:int=1",
+    "name": "support requests to open (1)",
+    "icon": ""
+   },
+   {
+    "title": "Update Credentials",
+    "href": "https://api.vifib.com/ERP5Site_viewNewPersonCredentialUpdateDialog",
+    "name": "update_credentials",
+    "icon": null
+   }
+  ],
+  "action_object_list_action": {
+   "title": "Delete",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=delete_document_list",
+   "name": "delete_document_list",
+   "icon": null
+  },
+  "action_object_jio_print": {
+   "title": "Print",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=print",
+   "name": "print",
+   "icon": null
+  },
+  "self": {
+   "href": "https://api.vifib.com/erp5/web_site_module/slapos_hateoas/virtual_hosting//"
+  },
+  "action_object_hidden": [
+   {
+    "title": "View Historical Comparison",
+    "href": "https://api.vifib.com/Base_viewHistoricalComparison",
+    "name": "view_historical_comparison",
+    "icon": null
+   },
+   {
+    "title": "View Historical Diff",
+    "href": "https://api.vifib.com/Base_viewHistoricalComparisonDiff",
+    "name": "view_historical_diff",
+    "icon": null
+   }
+  ],
+  "raw_search": {
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=search{&query,select_list*,limit*,group_by*,sort_on*,local_roles*,selection_domain*}",
+   "name": "Raw Search",
+   "templated": true
+  },
+  "type": {
+   "href": "urn:jio:get:portal_types/Web Site",
+   "name": "Web Site"
+  },
+  "me": {
+   "href": "urn:jio:get:person_module/20210302-3992F3"
+  },
+  "parent": {
+   "href": "urn:jio:get:web_site_module",
+   "name": "Web Sites"
+  },
+  "action_object_web_view": {
+   "title": "Web View",
+   "href": "https://api.vifib.com/WebSite_viewAsWeb",
+   "name": "web_view",
+   "icon": ""
+  },
+  "site_root": {
+   "href": "urn:jio:get:web_site_module/slapos_hateoas",
+   "name": "SlapOS Hateoas"
+  },
+  "action_object_view": [
+   {
+    "title": "View",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=view",
+    "name": "view",
+    "icon": ""
+   },
+   {
+    "title": "Layout Configuration",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=layout_configuration",
+    "name": "layout_configuration",
+    "icon": ""
+   },
+   {
+    "title": "Ecommerce Configuration",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=ecommerce_configuration",
+    "name": "ecommerce_configuration",
+    "icon": ""
+   },
+   {
+    "title": "Contents",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=section_content",
+    "name": "section_content",
+    "icon": ""
+   },
+   {
+    "title": "Local Roles",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=local_permission",
+    "name": "local_permission",
+    "icon": ""
+   },
+   {
+    "title": "Web Site Preference",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=preference",
+    "name": "preference",
+    "icon": ""
+   },
+   {
+    "title": "History",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=history",
+    "name": "history",
+    "icon": null
+   }
+  ],
+  "portal": {
+   "href": "urn:jio:get:erp5",
+   "name": "ERP5"
+  },
+  "action_user": [
+   {
+    "title": "Preferences",
+    "href": "https://api.vifib.com/personalize_form",
+    "name": "preferences",
+    "icon": null
+   },
+   {
+    "title": "Log out",
+    "href": "https://api.vifib.com/logout",
+    "name": "logout",
+    "icon": null
+   }
+  ],
+  "traversed_document": {
+   "href": "urn:jio:get:web_site_module/slapos_hateoas",
+   "name": "web_site_module/slapos_hateoas",
+   "title": "SlapOS Hateoas"
+  },
+  "action_object_jio_exchange": {
+   "title": "Export to Spreadsheet",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=ods_export",
+   "name": "ods_export",
+   "icon": null
+  },
+  "action_object_jump": {
+   "title": "Related Objects",
+   "href": "https://api.vifib.com/Base_jumpToRelatedObjectList?category.category_uid=128715558",
+   "name": "jump_related_object",
+   "icon": null
+  },
+  "action_object_action": [
+   {
+    "title": "Update Translation Data",
+    "href": "https://api.vifib.com/WebSite_viewUpdateTranslationDataDialog",
+    "name": "create_translation_data",
+    "icon": ""
+   },
+   {
+    "title": "Create Default Web Page",
+    "href": "https://api.vifib.com/WebSection_newDefaultWebPage",
+    "name": "new_default_page",
+    "icon": ""
+   },
+   {
+    "title": "Diff Object",
+    "href": "https://api.vifib.com/ERP5Site_viewDiffTwoObjectDialog?your_first_path=web_site_module/slapos_hateoas&your_second_path=web_site_module/slapos_hateoas",
+    "name": "diff_object_action",
+    "icon": null
+   }
+  ],
+  "view": [
+   {
+    "title": "View",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=view",
+    "name": "view",
+    "icon": ""
+   },
+   {
+    "title": "Layout Configuration",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=layout_configuration",
+    "name": "layout_configuration",
+    "icon": ""
+   },
+   {
+    "title": "Ecommerce Configuration",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=ecommerce_configuration",
+    "name": "ecommerce_configuration",
+    "icon": ""
+   },
+   {
+    "title": "Contents",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=section_content",
+    "name": "section_content",
+    "icon": ""
+   },
+   {
+    "title": "Local Roles",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=local_permission",
+    "name": "local_permission",
+    "icon": ""
+   },
+   {
+    "title": "Web Site Preference",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=preference",
+    "name": "preference",
+    "icon": ""
+   },
+   {
+    "title": "History",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=web_site_module%2Fslapos_hateoas&view=history",
+    "name": "history",
+    "icon": null
+   }
+  ],
+  "action_object_sort": {
+   "title": "Sort",
+   "href": "https://api.vifib.com/Folder_viewSortOnDialog",
+   "name": "sort_on",
+   "icon": null
+  }
+ },
+ "_debug": "root",
+ "title": "SlapOS Hateoas"
+}

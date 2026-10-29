@@ -1,0 +1,152 @@
+[2026-10-29 11:16:18,734] INFO     Processing computer partitions...
+[2026-10-29 11:16:18,739] DEBUG    Supervisord already running.
+[2026-10-29 11:16:18,752] DEBUG    Starting new HTTPS connection (1): slap.vifib.com:443
+[2026-10-29 11:16:18,970] DEBUG    https://slap.vifib.com:443 "GET /getFullComputerInformation?computer_id=COMP-20261027.021-9D1365 HTTP/1.1" 200 1006
+[2026-10-29 11:16:18,979] WARNING  Free partition slappart5 contains file(s) in /srv/slapgrid/slappart5.
+[2026-10-29 11:16:18,980] DEBUG    Check if slappart0 requires processing...
+[2026-10-29 11:16:18,988] INFO     Processing Computer Partition slappart0.
+[2026-10-29 11:16:18,989] INFO       Software URL: https://raw.githubusercontent.com/abilian/slapos_abilian_edge/mynij-proxy/software/mynij-proxy/software.cfg
+[2026-10-29 11:16:18,989] INFO       Software path: /opt/slapgrid/039288ce118cf842fc7d49f493e6dba4
+[2026-10-29 11:16:18,989] INFO       Instance path: /srv/slapgrid/slappart0
+[2026-10-29 11:16:18,991] DEBUG    Starting new HTTPS connection (1): slap.vifib.com:443
+[2026-10-29 11:16:19,105] DEBUG    https://slap.vifib.com:443 "GET /getComputerPartitionCertificate?computer_id=COMP-20261027.021-9D1365&computer_partition_id=slappart0 HTTP/1.1" 200 3811
+[2026-10-29 11:16:19,110] INFO       Instance status: started
+[2026-10-29 11:16:19,110] INFO     Installing Computer Partition slappart0...
+[2026-10-29 11:16:19,111] DEBUG    Copying '/opt/slapgrid/039288ce118cf842fc7d49f493e6dba4/instance.cfg' to '/srv/slapgrid/slappart0/buildout.cfg'
+[2026-10-29 11:16:19,121] INFO     Falling back to default buildout '/opt/slapgrid/039288ce118cf842fc7d49f493e6dba4/bin/buildout'
+[2026-10-29 11:16:19,121] DEBUG    Set umask from 022 to 027
+[2026-10-29 11:16:19,122] DEBUG    Invoking: '/opt/slapgrid/shared/python3/2c834f984209e385099be04bc6822c83/bin/python3 /opt/slapgrid/039288ce118cf842fc7d49f493e6dba4/bin/buildout -U' in directory '/srv/slapgrid/slappart0'
+[2026-10-29 11:16:19,122] DEBUG    Overridden HOME = '/srv/slapgrid/slappart0'
+[2026-10-29 11:16:19,123] DEBUG    Overridden PYTHONNOUSERSITE = 'true'
+[2026-10-29 11:16:19,123] DEBUG    Removed from environment: LANG, LOGNAME
+[2026-10-29 11:16:19,136] DEBUG    Successfully dropped privileges to uid=994 gid=1002
+[2026-10-29 11:16:19,144] INFO     2026-10-29 11:16:19 slapos[1402185] DEBUG Successfully dropped privileges to uid=994 gid=1002
+[2026-10-29 11:16:21,528] INFO     /opt/slapgrid/039288ce118cf842fc7d49f493e6dba4/eggs/urllib3-2.7.0-py3.13.egg/urllib3/connectionpool.py:1110: InsecureRequestWarning: Unverified HTTPS request is being made to host 'slap.vifib.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+[2026-10-29 11:16:21,529] INFO       warnings.warn(
+[2026-10-29 11:16:21,636] INFO     /opt/slapgrid/039288ce118cf842fc7d49f493e6dba4/eggs/urllib3-2.7.0-py3.13.egg/urllib3/connectionpool.py:1110: InsecureRequestWarning: Unverified HTTPS request is being made to host 'slap.vifib.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+[2026-10-29 11:16:21,636] INFO       warnings.warn(
+[2026-10-29 11:16:22,082] INFO     /opt/slapgrid/039288ce118cf842fc7d49f493e6dba4/eggs/urllib3-2.7.0-py3.13.egg/urllib3/connectionpool.py:1110: InsecureRequestWarning: Unverified HTTPS request is being made to host 'slap.vifib.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+[2026-10-29 11:16:22,083] INFO       warnings.warn(
+[2026-10-29 11:16:22,517] INFO     monitor-frontend: Request for 'Monitor Frontend mynij-proxy-3' with software release 'http://git.erp5.org/gitweb/slapos.git/blob_plain/HEAD:/software/apache-frontend/software.cfg' and software type 'default' failed with partition_parameter_kw={'https-only': 'true', 'url': 'https://[2401:5180:12::2]:8196'}, filter_kw={}, shared=True, state='started'.
+[2026-10-29 11:16:22,719] INFO     /opt/slapgrid/039288ce118cf842fc7d49f493e6dba4/eggs/urllib3-2.7.0-py3.13.egg/urllib3/connectionpool.py:1110: InsecureRequestWarning: Unverified HTTPS request is being made to host 'slap.vifib.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+[2026-10-29 11:16:22,719] INFO       warnings.warn(
+[2026-10-29 11:16:23,134] INFO     request-mynij-proxy-frontend: Request for 'Mynij Proxy Frontend' with software release 'http://git.erp5.org/gitweb/slapos.git/blob_plain/HEAD:/software/apache-frontend/software.cfg' and software type 'default' failed with partition_parameter_kw={'url': 'https://[2401:5180:12::2]:3001'}, filter_kw={}, shared=True, state='started'.
+[2026-10-29 11:16:23,161] INFO     Updating slap-configuration.
+[2026-10-29 11:16:23,161] INFO     Updating directory.
+[2026-10-29 11:16:23,162] INFO     Updating certificates.
+[2026-10-29 11:16:23,163] INFO     Updating mynij-proxy-service.
+[2026-10-29 11:16:23,163] INFO     Updating monitor-directory.
+[2026-10-29 11:16:23,164] INFO     Updating monitor-interface-configuration.
+[2026-10-29 11:16:23,164] INFO     Updating ca-directory.
+[2026-10-29 11:16:23,164] INFO     Updating monitor-htpasswd.
+[2026-10-29 11:16:23,165] INFO     Updating httpd-monitor-htpasswd.
+[2026-10-29 11:16:23,165] INFO     Updating monitor-httpd-cors.
+[2026-10-29 11:16:23,176] INFO     Updating monitor-frontend.
+[2026-10-29 11:16:23,176] INFO     monitor-frontend: Optional request failed.
+[2026-10-29 11:16:23,177] INFO     Updating logrotate-directory.
+[2026-10-29 11:16:23,177] INFO     Updating xnice-bin.
+[2026-10-29 11:16:23,178] INFO     Updating monitor-conf.
+[2026-10-29 11:16:23,191] INFO     Updating monitor-state-wrapper.
+[2026-10-29 11:16:23,192] INFO     Updating cron-simplelogger.
+[2026-10-29 11:16:23,302] INFO     Updating cron-service.
+[2026-10-29 11:16:23,303] INFO     Updating cron.
+[2026-10-29 11:16:23,303] INFO     cron: Installing dcron...
+[2026-10-29 11:16:23,304] INFO     cron: dcron successfully installed.
+[2026-10-29 11:16:23,304] INFO     Updating monitor-state-cron-entry.
+[2026-10-29 11:16:23,305] INFO     Updating monitor-state-first-run.
+[2026-10-29 11:16:23,306] INFO     Updating monitor-configurator-wrapper.
+[2026-10-29 11:16:23,306] INFO     Updating monitor-configurator-cron-entry.
+[2026-10-29 11:16:23,307] INFO     Updating monitor-collect-wrapper.
+[2026-10-29 11:16:23,309] INFO     Updating monitor-collect-cron-entry.
+[2026-10-29 11:16:23,310] INFO     Updating logrotate-conf.
+[2026-10-29 11:16:23,314] INFO     Updating logrotate.
+[2026-10-29 11:16:23,314] INFO     Updating cron-entry-logrotate.
+[2026-10-29 11:16:23,315] INFO     Updating logrotate-entry-cron.
+[2026-10-29 11:16:23,321] INFO     Updating certificate-authority.
+[2026-10-29 11:16:23,440] INFO     Updating certificate-authority-service.
+[2026-10-29 11:16:23,441] INFO     Updating start-monitor.
+[2026-10-29 11:16:23,442] INFO     Updating monitor-httpd-conf.
+[2026-10-29 11:16:23,456] INFO     Updating monitor-httpd-graceful-wrapper.
+[2026-10-29 11:16:23,459] INFO     Updating monitor-httpd-wrapper.
+[2026-10-29 11:16:23,459] INFO     Updating monitor-httpd-service-wrapper.
+[2026-10-29 11:16:23,466] INFO     Updating ca-monitor-httpd.
+[2026-10-29 11:16:23,510] INFO     Updating ca-monitor-httpd-service.
+[2026-10-29 11:16:23,511] INFO     Updating monitor-httpd-promise.
+[2026-10-29 11:16:23,592] INFO     Updating monitor-frontend-promise.
+[2026-10-29 11:16:23,593] INFO     Updating check-monitor-password-promise.
+[2026-10-29 11:16:23,595] INFO     Updating monitor-bootstrap-promise.
+[2026-10-29 11:16:23,596] INFO     Updating monitor-symlink.
+[2026-10-29 11:16:23,597] INFO     The recipe for monitor-symlink doesn't define an update method. Using its install method.
+[2026-10-29 11:16:23,597] INFO     Updating promise-check-slapgrid.
+[2026-10-29 11:16:23,599] INFO     Updating promise-check-free-disk-space.
+[2026-10-29 11:16:23,600] INFO     Updating logrotate-entry-monitor-httpd.
+[2026-10-29 11:16:23,601] INFO     Updating logrotate-entry-monitor-data.
+[2026-10-29 11:16:23,601] INFO     Updating logrotate-entry-monitor-promise-history.
+[2026-10-29 11:16:23,602] INFO     Updating logrotate-entry-promise.log.
+[2026-10-29 11:16:23,602] INFO     Updating monitor-base.
+[2026-10-29 11:16:23,602] INFO     monitor-base: Running 
+[2026-10-29 11:16:23,609] INFO     Updating expand-monitor-uri-template.
+[2026-10-29 11:16:23,610] INFO     Updating request-mynij-proxy-frontend.
+[2026-10-29 11:16:23,610] INFO     request-mynij-proxy-frontend: Optional request failed.
+[2026-10-29 11:16:23,610] INFO     Updating publish-connection-parameter.
+[2026-10-29 11:16:23,610] INFO     Updating mynij-proxy-promise.
+[2026-10-29 11:16:23,610] INFO     Updating mynij-proxy-http-promise.
+[2026-10-29 11:16:23,610] INFO     Updating mynij-proxy-frontend-promise.
+[2026-10-29 11:16:23,978] DEBUG    Restore umask from 027 to 022
+[2026-10-29 11:16:23,981] DEBUG    Updating supervisord
+[2026-10-29 11:16:23,998] DEBUG    Supervisord updated
+[2026-10-29 11:16:24,014] INFO     Requested start of slappart0...
+[2026-10-29 11:16:24,014] INFO     Checking slappart0 promises...
+[2026-10-29 11:16:24,014] INFO     Switching to slappart0's python at /opt/slapgrid/shared/python3/2c834f984209e385099be04bc6822c83/bin/python3
+[2026-10-29 11:16:24,015] DEBUG    Overridden HOME = '/srv/slapgrid/slappart0'
+[2026-10-29 11:16:24,015] DEBUG    Overridden PYTHONNOUSERSITE = 'true'
+[2026-10-29 11:16:24,016] DEBUG    Removed from environment: LANG, LOGNAME
+[2026-10-29 11:16:24,036] DEBUG    Successfully dropped privileges to uid=994 gid=1002
+[2026-10-29 11:16:24,064] INFO     2026-10-29 11:16:24 slapos[1402185] DEBUG Successfully dropped privileges to uid=994 gid=1002
+[2026-10-29 11:16:28,631] INFO     2026-10-29 11:16:28 slapos[1402210] INFO Checking promise buildout-slappart0-status.py...
+[2026-10-29 11:16:28,798] INFO     2026-10-29 11:16:28 buildout-slappart0-status.py[1402210] INFO buildout is OK
+[2026-10-29 11:16:28,843] INFO     2026-10-29 11:16:28 slapos[1402210] INFO Checking promise check-free-disk-space.py...
+[2026-10-29 11:16:29,075] INFO     2026-10-29 11:16:29 check-free-disk-space.py[1402210] INFO Current disk usage: OK
+[2026-10-29 11:16:29,103] INFO     2026-10-29 11:16:29 slapos[1402210] INFO Checking promise mynij-proxy-port-listening.py...
+[2026-10-29 11:16:29,284] INFO     2026-10-29 11:16:29 mynij-proxy-port-listening.py[1402210] INFO socket connection OK ('2401:5180:12::2', 3001, 0, 0)
+[2026-10-29 11:16:29,315] INFO     2026-10-29 11:16:29 slapos[1402210] INFO Checking promise check-monitor-frontend-password.py...
+[2026-10-29 11:16:29,491] INFO     2026-10-29 11:16:29 check-monitor-frontend-password.py[1402210] ERROR ERROR: Invalid URL '': No scheme supplied. Perhaps you meant https://?
+[2026-10-29 11:16:29,519] INFO     2026-10-29 11:16:29 slapos[1402210] ERROR ERROR: Invalid URL '': No scheme supplied. Perhaps you meant https://?
+[2026-10-29 11:16:29,526] INFO     2026-10-29 11:16:29 slapos[1402210] INFO Checking promise monitor-bootstrap-status.py...
+[2026-10-29 11:16:29,827] INFO     2026-10-29 11:16:29 monitor-bootstrap-status.py[1402210] INFO Bootstrap OK
+[2026-10-29 11:16:29,886] INFO     2026-10-29 11:16:29 slapos[1402210] INFO Checking promise monitor-httpd-listening-on-tcp.py...
+[2026-10-29 11:16:30,176] INFO     /opt/slapgrid/039288ce118cf842fc7d49f493e6dba4/eggs/urllib3-2.7.0-py3.13.egg/urllib3/connectionpool.py:1110: InsecureRequestWarning: Unverified HTTPS request is being made to host '2401:5180:12::2'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+[2026-10-29 11:16:30,176] INFO       warnings.warn(
+[2026-10-29 11:16:30,181] INFO     2026-10-29 11:16:30 monitor-httpd-listening-on-tcp.py[1402210] INFO non-authenticated request to 'https://[2401:5180:12::2]:8196' succeeded (returned expected code 401)
+[2026-10-29 11:16:30,256] INFO     2026-10-29 11:16:30 slapos[1402210] INFO Checking promise mynij-proxy-http-frontend.py...
+[2026-10-29 11:16:30,449] INFO     2026-10-29 11:16:30 mynij-proxy-http-frontend.py[1402210] ERROR ERROR: Invalid URL '/ping': No scheme supplied. Perhaps you meant https:///ping?
+[2026-10-29 11:16:30,511] INFO     2026-10-29 11:16:30 slapos[1402210] ERROR ERROR: Invalid URL '/ping': No scheme supplied. Perhaps you meant https:///ping?
+[2026-10-29 11:16:30,520] INFO     2026-10-29 11:16:30 slapos[1402210] INFO Checking promise monitor-http-frontend.py...
+[2026-10-29 11:16:30,698] INFO     2026-10-29 11:16:30 monitor-http-frontend.py[1402210] ERROR ERROR: Invalid URL '': No scheme supplied. Perhaps you meant https://?
+[2026-10-29 11:16:30,723] INFO     2026-10-29 11:16:30 slapos[1402210] ERROR ERROR: Invalid URL '': No scheme supplied. Perhaps you meant https://?
+[2026-10-29 11:16:30,728] INFO     2026-10-29 11:16:30 slapos[1402210] INFO Checking promise mynij-http-working.py...
+[2026-10-29 11:16:30,922] INFO     /opt/slapgrid/039288ce118cf842fc7d49f493e6dba4/eggs/urllib3-2.7.0-py3.13.egg/urllib3/connectionpool.py:1110: InsecureRequestWarning: Unverified HTTPS request is being made to host '2401:5180:12::2'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+[2026-10-29 11:16:30,922] INFO       warnings.warn(
+[2026-10-29 11:16:30,927] INFO     2026-10-29 11:16:30 mynij-http-working.py[1402210] INFO non-authenticated request to 'https://[2401:5180:12::2]:3001/ping' succeeded (returned expected code 200)
+[2026-10-29 11:16:31,282] ERROR    Promise 'check-monitor-frontend-password.py' failed with output: ERROR: Invalid URL '': No scheme supplied. Perhaps you meant https://?
+[2026-10-29 11:16:31,288] DEBUG    Starting new HTTPS connection (1): slap.vifib.com:443
+[2026-10-29 11:16:31,862] DEBUG    https://slap.vifib.com:443 "POST /softwareInstanceError HTTP/1.1" 200 4
+[2026-10-29 11:16:31,864] INFO     Finished computer partitions.
+[2026-10-29 11:16:31,864] INFO     ================================================================================
+[2026-10-29 11:16:31,864] INFO     Error with promises for the following partitions:
+[2026-10-29 11:16:31,864] INFO       slappart0[default]: Promise 'check-monitor-frontend-password.py' failed with output: ERROR: Invalid URL '': No scheme supplied. Perhaps you meant https://?
+[2026-10-29 11:17:07,385] DEBUG    Loading config: /etc/opt/slapos/slapos.cfg
+[2026-10-29 11:17:07,388] INFO     Sleeping for 1 seconds. To disable this feature, check --now parameter in slapgrid help.
+[2026-10-29 11:17:08,392] DEBUG    Starting new HTTPS connection (1): slap.vifib.com:443
+[2026-10-29 11:17:08,526] DEBUG    https://slap.vifib.com:443 "GET /getHateoasUrl HTTP/1.1" 200 22
+[2026-10-29 11:17:08,529] INFO     Processing computer partitions...
+[2026-10-29 11:17:08,537] DEBUG    Supervisord already running.
+[2026-10-29 11:17:08,543] DEBUG    Starting new HTTPS connection (1): slap.vifib.com:443
+[2026-10-29 11:17:08,759] DEBUG    https://slap.vifib.com:443 "GET /getFullComputerInformation?computer_id=COMP-20261027.021-9D1365 HTTP/1.1" 200 1006
+[2026-10-29 11:17:08,773] WARNING  Free partition slappart5 contains file(s) in /srv/slapgrid/slappart5.
+[2026-10-29 11:17:08,774] DEBUG    Check if slappart0 requires processing...
+[2026-10-29 11:17:08,780] INFO     Processing Computer Partition slappart0.
+[2026-10-29 11:17:08,781] INFO       Software URL: https://raw.githubusercontent.com/abilian/slapos_abilian_edge/mynij-proxy/software/mynij-proxy/software.cfg
+[2026-10-29 11:17:08,781] INFO       Software path: /opt/slapgrid/039288ce118cf842fc7d49f493e6dba4
+[2026-10-29 11:17:08,781] INFO       Instance path: /srv/slapgrid/slappart0
+[2026-10-29 11:17:08,784] DEBUG    Starting new HTTPS connection (1): slap.vifib.com:443

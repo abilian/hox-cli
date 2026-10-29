@@ -1,0 +1,41 @@
+{
+ "_sort_on": null,
+ "_embedded": {
+  "contents": [
+   {
+    "url_string": "https://raw.githubusercontent.com/abilian/slapos_abilian_edge/mynij-proxy/software/mynij-proxy/software.cfg",
+    "_links": {
+     "self": {
+      "href": "urn:jio:get:software_installation_module/20261029.013-1E81D2DD"
+     }
+    },
+    "relative_url": "software_installation_module/20261029.013-1E81D2DD",
+    "slap_state": "start_requested"
+   }
+  ]
+ },
+ "_debug": "search",
+ "_select_list": [
+  "url_string",
+  "slap_state",
+  "relative_url"
+ ],
+ "_local_roles": null,
+ "_query": "portal_type:\"Software Installation\" AND validation_state:validated AND aggregate_reference:=\"COMP-20261027.021-9D1365\"",
+ "_limit": "100",
+ "_links": {
+  "self": {
+   "href": "https://api.vifib.com/ERP5Document_getHateoas"
+  },
+  "portal": {
+   "href": "urn:jio:get:erp5",
+   "name": "ERP5"
+  },
+  "site_root": {
+   "href": "urn:jio:get:web_site_module/slapos_hateoas",
+   "name": "SlapOS Hateoas"
+  }
+ },
+ "_group_by": null,
+ "_selection_domain": null
+}

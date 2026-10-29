@@ -1,0 +1,727 @@
+{
+ "_embedded": {
+  "_view": {
+   "my_start_date_range_max": {
+    "subfield_minute_key": "subfield_field_my_start_date_range_max_minute",
+    "description": "The Date",
+    "subfield_hour_key": "subfield_field_my_start_date_range_max_hour",
+    "subfield_month_key": "subfield_field_my_start_date_range_max_month",
+    "ampm_time_style": 0,
+    "allow_empty_time": 0,
+    "editable": 1,
+    "subfield_day_key": "subfield_field_my_start_date_range_max_day",
+    "hide_day": 0,
+    "date_only": 1,
+    "key": "field_my_start_date_range_max",
+    "subfield_timezone_key": "subfield_field_my_start_date_range_max_timezone",
+    "title": "Valid until",
+    "default": "",
+    "css_class": "date_field",
+    "required": 0,
+    "subfield_year_key": "subfield_field_my_start_date_range_max_year",
+    "autocomplete": null,
+    "hidden_day_is_last_day": 0,
+    "hidden": 0,
+    "subfield_ampm_key": "subfield_field_my_start_date_range_max_ampm",
+    "type": "DateTimeField",
+    "timezone_style": 0
+   },
+   "my_aggregate_title_list": {
+    "sort": [],
+    "relation_item_relative_url": [
+     "compute_node_module/20261027.021-9D1365"
+    ],
+    "relation_item_key": "subfield_field_my_aggregate_title_list_item",
+    "description": "",
+    "search_view": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=Base_viewRelatedObjectList&extra_param_json=eyJmaWVsZF9pZCI6ICJteV9hZ2dyZWdhdGVfdGl0bGVfbGlzdCIsICJvcmlnaW5hbF9mb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlfdmlldyJ9",
+    "catalog_index": "title",
+    "editable": 1,
+    "allow_creation": 0,
+    "allow_jump": 1,
+    "key": "field_my_aggregate_title_list",
+    "query": "urn:jio:allDocs?query=portal_type%3A%28%22Compute%20Node%22%20OR%20%22Instance%20Node%22%20OR%20%22Remote%20Node%22%29%20AND%20follow_up__uid%3A189063300L",
+    "portal_types": [
+     "Compute Node",
+     "Instance Node",
+     "Remote Node"
+    ],
+    "translated_portal_types": [
+     "Compute Node",
+     "Instance Node",
+     "Remote Node"
+    ],
+    "title": "Compute Node",
+    "default": [
+     "abilian-hox-node-1"
+    ],
+    "css_class": "",
+    "relation_field_id": "subfield_field_my_aggregate_title_list_relation",
+    "required": 0,
+    "autocomplete": "",
+    "url": "allocation_supply_module/20261029.023-A00FDF",
+    "relation_item_uid": [
+     189041368
+    ],
+    "hidden": 0,
+    "type": "MultiRelationStringField"
+   },
+   "_embedded": {
+    "form_definition": {
+     "update_action_title": "",
+     "action_title": "",
+     "_debug": "traverse",
+     "pt": "form_view",
+     "title": "Allocation Supply",
+     "group_list": [
+      [
+       "left",
+       [
+        [
+         "my_title",
+         {
+          "meta_type": "ProxyField"
+         }
+        ],
+        [
+         "my_start_date_range_min",
+         {
+          "meta_type": "ProxyField"
+         }
+        ],
+        [
+         "my_start_date_range_max",
+         {
+          "meta_type": "ProxyField"
+         }
+        ]
+       ],
+       null
+      ],
+      [
+       "right",
+       [
+        [
+         "my_destination_project_title",
+         {
+          "meta_type": "ProxyField"
+         }
+        ],
+        [
+         "my_destination_title",
+         {
+          "meta_type": "ProxyField"
+         }
+        ],
+        [
+         "my_translated_validation_state_title",
+         {
+          "meta_type": "ProxyField"
+         }
+        ]
+       ],
+       null
+      ],
+      [
+       "center",
+       [
+        [
+         "my_aggregate_title_list",
+         {
+          "meta_type": "ProxyField"
+         }
+        ],
+        [
+         "my_slave_on_same_instance_tree_allocable",
+         {
+          "meta_type": "ProxyField"
+         }
+        ]
+       ],
+       null
+      ],
+      [
+       "bottom",
+       [
+        [
+         "listbox",
+         {
+          "meta_type": "ProxyField"
+         }
+        ],
+        [
+         "form_id",
+         {
+          "meta_type": "StringField"
+         }
+        ]
+       ],
+       null
+      ]
+     ],
+     "_links": {
+      "traversed_document": {
+       "href": "urn:jio:get:AllocationSupply_view",
+       "name": "AllocationSupply_view",
+       "title": "Allocation Supply"
+      },
+      "action_object_search": {
+       "title": "Search",
+       "href": "https://api.vifib.com/AllocationSupply_view/Folder_viewSearchDialog",
+       "name": "search",
+       "icon": null
+      },
+      "action_object_list_action": {
+       "title": "Delete",
+       "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=AllocationSupply_view&view=delete_document_list",
+       "name": "delete_document_list",
+       "icon": null
+      },
+      "action_object_jio_exchange": {
+       "title": "Export to Spreadsheet",
+       "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=AllocationSupply_view&view=ods_export",
+       "name": "ods_export",
+       "icon": null
+      },
+      "action_object_jump": {
+       "title": "Related Objects",
+       "href": "https://api.vifib.com/AllocationSupply_view/Base_jumpToRelatedObjectList?category.category_uid=176837531",
+       "name": "jump_related_object",
+       "icon": null
+      },
+      "action_object_jio_print": {
+       "title": "Print",
+       "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=AllocationSupply_view&view=print",
+       "name": "print",
+       "icon": null
+      },
+      "self": {
+       "href": "https://api.vifib.com/ERP5Document_getHateoas"
+      },
+      "action_object_hidden": [
+       {
+        "title": "View Historical Comparison",
+        "href": "https://api.vifib.com/AllocationSupply_view/Base_viewHistoricalComparison",
+        "name": "view_historical_comparison",
+        "icon": null
+       },
+       {
+        "title": "View Historical Diff",
+        "href": "https://api.vifib.com/AllocationSupply_view/Base_viewHistoricalComparisonDiff",
+        "name": "view_historical_diff",
+        "icon": null
+       }
+      ],
+      "action_user": [
+       {
+        "title": "Preferences",
+        "href": "https://api.vifib.com/personalize_form",
+        "name": "preferences",
+        "icon": null
+       },
+       {
+        "title": "Log out",
+        "href": "https://api.vifib.com/logout",
+        "name": "logout",
+        "icon": null
+       }
+      ],
+      "site_root": {
+       "href": "urn:jio:get:web_site_module/slapos_hateoas",
+       "name": "SlapOS Hateoas"
+      },
+      "action_object_view": {
+       "title": "History",
+       "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=AllocationSupply_view&view=history",
+       "name": "history",
+       "icon": null
+      },
+      "action_object_action": {
+       "title": "Diff Object",
+       "href": "https://api.vifib.com/AllocationSupply_view/ERP5Site_viewDiffTwoObjectDialog?your_first_path=AllocationSupply_view&your_second_path=AllocationSupply_view",
+       "name": "diff_object_action",
+       "icon": null
+      },
+      "action_global": [
+       {
+        "title": "Support Requests to Open",
+        "href": "https://api.vifib.com/support_request_module?simulation_state=submitted&portal_type:list=Support Request&local_roles:list=Assignor&reset:int=1",
+        "name": "support requests to open (1)",
+        "icon": ""
+       },
+       {
+        "title": "Update Credentials",
+        "href": "https://api.vifib.com/ERP5Site_viewNewPersonCredentialUpdateDialog",
+        "name": "update_credentials",
+        "icon": null
+       }
+      ],
+      "portal": {
+       "href": "urn:jio:get:erp5",
+       "name": "ERP5"
+      },
+      "action_object_sort": {
+       "title": "Sort",
+       "href": "https://api.vifib.com/AllocationSupply_view/Folder_viewSortOnDialog",
+       "name": "sort_on",
+       "icon": null
+      },
+      "action_object_ui": {
+       "title": "Modify UI",
+       "href": "https://api.vifib.com/AllocationSupply_view/Base_viewUIDialog",
+       "name": "list_ui",
+       "icon": null
+      },
+      "action_object_jio_view": {
+       "title": "Definition View",
+       "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=AllocationSupply_view&view=definition_view",
+       "name": "definition_view",
+       "icon": ""
+      },
+      "type": {
+       "href": "urn:jio:get:portal_types/ERP5 Form",
+       "name": "ERP5 Form"
+      },
+      "view": {
+       "title": "History",
+       "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=AllocationSupply_view&view=history",
+       "name": "history",
+       "icon": null
+      }
+     },
+     "action": "Base_edit",
+     "update_action": ""
+    }
+   },
+   "my_title": {
+    "description": "The name of a document in ERP5",
+    "title": "Title",
+    "default": "mynij-proxy on abilian-hox-node-1",
+    "css_class": "",
+    "required": 0,
+    "editable": 1,
+    "autocomplete": "",
+    "key": "field_my_title",
+    "maxlength": "",
+    "hidden": 0,
+    "type": "StringField"
+   },
+   "my_slave_on_same_instance_tree_allocable": {
+    "autocomplete": null,
+    "default": 0,
+    "description": "",
+    "key": "field_my_slave_on_same_instance_tree_allocable",
+    "title": "Allocate Slave On Same Instance Tree",
+    "editable": 1,
+    "css_class": "",
+    "hidden": 0,
+    "required": 0,
+    "type": "CheckBoxField"
+   },
+   "listbox": {
+    "sort": [],
+    "show_stat": false,
+    "domain_root_list": [],
+    "search_column_list": [
+     [
+      "title",
+      "Title"
+     ],
+     [
+      "resource_title",
+      "Product or Service"
+     ]
+    ],
+    "description": "",
+    "portal_type": [
+     [
+      "Allocation Supply Line",
+      "Allocation Supply Line"
+     ]
+    ],
+    "editable": 1,
+    "checked_uid_list": [],
+    "show_select": 0,
+    "key": "field_listbox",
+    "query": "urn:jio:allDocs?query=",
+    "default_params": {
+     "checked_permission": "View",
+     "ignore_unknown_columns": true
+    },
+    "list_method": "objectValues",
+    "editable_column_list": [],
+    "title": "Allocation Supply Lines",
+    "css_class": "",
+    "show_anchor": 0,
+    "lines": 15,
+    "all_column_list": [],
+    "autocomplete": null,
+    "sort_column_list": [
+     [
+      "title",
+      "Title"
+     ],
+     [
+      "resource_title",
+      "Product or Service"
+     ]
+    ],
+    "column_list": [
+     [
+      "title",
+      "Title"
+     ],
+     [
+      "resource_title",
+      "Product or Service"
+     ]
+    ],
+    "selection_name": "allocation_supply_line_selection",
+    "show_count": false,
+    "domain_dict": {},
+    "hidden": 0,
+    "type": "ListBox",
+    "list_method_template": "https://api.vifib.com/ERP5Document_getHateoas?mode=search&relative_url=allocation_supply_module%2F20261029.023-A00FDF&form_relative_url=portal_skins/slapos_cloud/AllocationSupply_view/listbox&list_method=objectValues&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlfdmlldyJ9&default_param_json=eyJjaGVja2VkX3Blcm1pc3Npb24iOiAiVmlldyIsICJpZ25vcmVfdW5rbm93bl9jb2x1bW5zIjogdHJ1ZSwgInBvcnRhbF90eXBlIjogWyJBbGxvY2F0aW9uIFN1cHBseSBMaW5lIl19{&query,select_list*,limit*,group_by*,sort_on*,local_roles*,selection_domain*}"
+   },
+   "my_destination_title": {
+    "sort": [],
+    "relation_item_relative_url": [],
+    "relation_item_key": "subfield_field_my_destination_title_item",
+    "description": "The person who is delivered goods or services in this operation",
+    "search_view": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=Base_viewRelatedObjectList&extra_param_json=eyJmaWVsZF9pZCI6ICJteV9kZXN0aW5hdGlvbl90aXRsZSIsICJvcmlnaW5hbF9mb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlfdmlldyJ9",
+    "catalog_index": "title",
+    "editable": 1,
+    "allow_creation": 1,
+    "allow_jump": 1,
+    "key": "field_my_destination_title",
+    "query": "urn:jio:allDocs?query=portal_type%3A%22Person%22",
+    "portal_types": [
+     "Person"
+    ],
+    "translated_portal_types": [
+     "Person"
+    ],
+    "title": "Recipient or Beneficiary",
+    "default": [
+     ""
+    ],
+    "css_class": "",
+    "relation_field_id": "subfield_field_my_destination_title_relation",
+    "required": 0,
+    "autocomplete": "",
+    "url": "allocation_supply_module/20261029.023-A00FDF",
+    "relation_item_uid": [],
+    "hidden": 0,
+    "type": "RelationStringField"
+   },
+   "my_translated_validation_state_title": {
+    "description": "The current state of the document.",
+    "title": "State",
+    "default": "Validated",
+    "css_class": "",
+    "required": 0,
+    "editable": 0,
+    "autocomplete": "",
+    "key": "field_my_translated_validation_state_title",
+    "maxlength": "",
+    "hidden": 0,
+    "type": "StringField"
+   },
+   "_links": {
+    "traversed_document": {
+     "href": "urn:jio:get:allocation_supply_module/20261029.023-A00FDF",
+     "name": "allocation_supply_module/20261029.023-A00FDF",
+     "title": "mynij-proxy on abilian-hox-node-1"
+    },
+    "self": {
+     "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/AllocationSupply_view"
+    },
+    "form_definition": {
+     "href": "urn:jio:get:portal_skins/slapos_cloud/AllocationSupply_view",
+     "name": "AllocationSupply_view"
+    }
+   },
+   "my_destination_project_title": {
+    "sort": [],
+    "relation_item_relative_url": [
+     "project_module/20261026.009-F09D5B"
+    ],
+    "relation_item_key": "subfield_field_my_destination_project_title_item",
+    "description": "",
+    "search_view": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=Base_viewRelatedObjectList&extra_param_json=eyJmaWVsZF9pZCI6ICJteV9kZXN0aW5hdGlvbl9wcm9qZWN0X3RpdGxlIiwgIm9yaWdpbmFsX2Zvcm1faWQiOiAiQWxsb2NhdGlvblN1cHBseV92aWV3In0=",
+    "catalog_index": "title",
+    "editable": 1,
+    "allow_creation": 1,
+    "allow_jump": 1,
+    "key": "field_my_destination_project_title",
+    "query": "urn:jio:allDocs?query=portal_type%3A%22Project%22",
+    "portal_types": [
+     "Project"
+    ],
+    "translated_portal_types": [
+     "Project"
+    ],
+    "title": "Current Project",
+    "default": [
+     "Abilian (HyperOpenX)"
+    ],
+    "css_class": "",
+    "relation_field_id": "subfield_field_my_destination_project_title_relation",
+    "required": 0,
+    "autocomplete": "",
+    "url": "allocation_supply_module/20261029.023-A00FDF",
+    "relation_item_uid": [
+     189063300
+    ],
+    "hidden": 0,
+    "type": "RelationStringField"
+   },
+   "_actions": {
+    "put": {
+     "action": "Base_edit",
+     "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/Base_edit",
+     "method": "POST"
+    }
+   },
+   "my_start_date_range_min": {
+    "subfield_minute_key": "subfield_field_my_start_date_range_min_minute",
+    "description": "The Date",
+    "subfield_hour_key": "subfield_field_my_start_date_range_min_hour",
+    "subfield_month_key": "subfield_field_my_start_date_range_min_month",
+    "ampm_time_style": 0,
+    "allow_empty_time": 0,
+    "editable": 1,
+    "subfield_day_key": "subfield_field_my_start_date_range_min_day",
+    "hide_day": 0,
+    "date_only": 1,
+    "key": "field_my_start_date_range_min",
+    "subfield_timezone_key": "subfield_field_my_start_date_range_min_timezone",
+    "title": "Valid from",
+    "default": "Thu, 29 Oct 2026 00:00:00 +0000",
+    "css_class": "date_field",
+    "required": 0,
+    "subfield_year_key": "subfield_field_my_start_date_range_min_year",
+    "autocomplete": null,
+    "hidden_day_is_last_day": 0,
+    "hidden": 0,
+    "subfield_ampm_key": "subfield_field_my_start_date_range_min_ampm",
+    "type": "DateTimeField",
+    "timezone_style": 0
+   },
+   "form_id": {
+    "required": 1,
+    "description": "",
+    "key": "form_id",
+    "css_class": "",
+    "default": "AllocationSupply_view",
+    "editable": 0,
+    "hidden": 1,
+    "title": "form_id",
+    "type": "StringField"
+   }
+  }
+ },
+ "_links": {
+  "action_object_search": {
+   "title": "Search",
+   "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/Folder_viewSearchDialog",
+   "name": "search",
+   "icon": null
+  },
+  "action_object_jio_report": {
+   "title": "ZODB History",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=zodb_history&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlfdmlldyJ9",
+   "name": "zodb_history",
+   "icon": null
+  },
+  "action_object_ui": {
+   "title": "Modify UI",
+   "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/Base_viewUIDialog",
+   "name": "list_ui",
+   "icon": null
+  },
+  "action_global": [
+   {
+    "title": "Support Requests to Open",
+    "href": "https://api.vifib.com/support_request_module?simulation_state=submitted&portal_type:list=Support Request&local_roles:list=Assignor&reset:int=1",
+    "name": "support requests to open (1)",
+    "icon": ""
+   },
+   {
+    "title": "Update Credentials",
+    "href": "https://api.vifib.com/ERP5Site_viewNewPersonCredentialUpdateDialog",
+    "name": "update_credentials",
+    "icon": null
+   }
+  ],
+  "action_object_sort": {
+   "title": "Sort",
+   "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/Folder_viewSortOnDialog",
+   "name": "sort_on",
+   "icon": null
+  },
+  "action_object_jio_print": {
+   "title": "Print",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=print&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlfdmlldyJ9",
+   "name": "print",
+   "icon": null
+  },
+  "action_object_new_content_action": {
+   "title": "Create a Document",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=create_a_document&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlfdmlldyJ9",
+   "name": "create_a_document",
+   "icon": null
+  },
+  "action_object_clone_action": {
+   "title": "Clone Document",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=clone_document&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlfdmlldyJ9",
+   "name": "clone_document",
+   "icon": null
+  },
+  "self": {
+   "href": "https://api.vifib.com/ERP5Document_getHateoas"
+  },
+  "action_object_hidden": [
+   {
+    "title": "View Historical Comparison",
+    "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/Base_viewHistoricalComparison",
+    "name": "view_historical_comparison",
+    "icon": null
+   },
+   {
+    "title": "View Historical Diff",
+    "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/Base_viewHistoricalComparisonDiff",
+    "name": "view_historical_diff",
+    "icon": null
+   }
+  ],
+  "action_workflow": {
+   "title": "Invalidate",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=invalidate_action&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlfdmlldyJ9",
+   "name": "invalidate_action",
+   "icon": ""
+  },
+  "type": {
+   "href": "urn:jio:get:portal_types/Allocation Supply",
+   "name": "Allocation Supply"
+  },
+  "parent": {
+   "href": "urn:jio:get:allocation_supply_module",
+   "name": "Allocation Supplies"
+  },
+  "site_root": {
+   "href": "urn:jio:get:web_site_module/slapos_hateoas",
+   "name": "SlapOS Hateoas"
+  },
+  "action_object_view": [
+   {
+    "title": "View",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=view",
+    "name": "view",
+    "icon": ""
+   },
+   {
+    "title": "Panel View",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=slapos_panel_view",
+    "name": "slapos_panel_view",
+    "icon": ""
+   },
+   {
+    "title": "History",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=history",
+    "name": "history",
+    "icon": null
+   }
+  ],
+  "portal": {
+   "href": "urn:jio:get:erp5",
+   "name": "ERP5"
+  },
+  "action_user": [
+   {
+    "title": "Preferences",
+    "href": "https://api.vifib.com/personalize_form",
+    "name": "preferences",
+    "icon": null
+   },
+   {
+    "title": "Log out",
+    "href": "https://api.vifib.com/logout",
+    "name": "logout",
+    "icon": null
+   }
+  ],
+  "traversed_document": {
+   "href": "urn:jio:get:allocation_supply_module/20261029.023-A00FDF",
+   "name": "allocation_supply_module/20261029.023-A00FDF",
+   "title": "mynij-proxy on abilian-hox-node-1"
+  },
+  "action_object_jio_exchange": {
+   "title": "Export to Spreadsheet",
+   "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=ods_export&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlfdmlldyJ9",
+   "name": "ods_export",
+   "icon": null
+  },
+  "action_object_jump": {
+   "title": "Related Objects",
+   "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/Base_jumpToRelatedObjectList?category.category_uid=189051573",
+   "name": "jump_related_object",
+   "icon": null
+  },
+  "action_object_action": {
+   "title": "Diff Object",
+   "href": "https://api.vifib.com/allocation_supply_module/20261029.023-A00FDF/ERP5Site_viewDiffTwoObjectDialog?your_first_path=allocation_supply_module/20261029.023-A00FDF&your_second_path=allocation_supply_module/20261029.023-A00FDF",
+   "name": "diff_object_action",
+   "icon": null
+  },
+  "action_object_jio_fast_input": [
+   {
+    "title": "Invalidate",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=slapos_panel_workflow_fast_invalidate&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlfdmlldyJ9",
+    "name": "slapos_panel_workflow_fast_invalidate",
+    "icon": ""
+   },
+   {
+    "title": "Switch Privacy",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=slapos_panel_switch_private&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlfdmlldyJ9",
+    "name": "slapos_panel_switch_private",
+    "icon": ""
+   }
+  ],
+  "view": [
+   {
+    "title": "View",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=view",
+    "name": "view",
+    "icon": ""
+   },
+   {
+    "title": "Panel View",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=slapos_panel_view",
+    "name": "slapos_panel_view",
+    "icon": ""
+   },
+   {
+    "title": "History",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=history",
+    "name": "history",
+    "icon": null
+   }
+  ],
+  "action_object_list_action": [
+   {
+    "title": "Paste",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=paste_document_list&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlfdmlldyJ9",
+    "name": "paste_document_list",
+    "icon": null
+   },
+   {
+    "title": "Delete",
+    "href": "https://api.vifib.com/ERP5Document_getHateoas?mode=traverse&relative_url=allocation_supply_module%2F20261029.023-A00FDF&view=delete_document_list&extra_param_json=eyJmb3JtX2lkIjogIkFsbG9jYXRpb25TdXBwbHlfdmlldyJ9",
+    "name": "delete_document_list",
+    "icon": null
+   }
+  ]
+ },
+ "_debug": "traverse",
+ "title": "mynij-proxy on abilian-hox-node-1"
+}
