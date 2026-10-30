@@ -68,3 +68,10 @@ def test_example_config_is_valid():
     sw = config.software_named("mynij-proxy")
     assert sw.checkout == Path("/work/hox/slapos_abilian_edge")
     assert [c.name for c in sw.checks] == ["backend ping", "frontend ping", "CORS"]
+
+
+def test_only_ssh_file_options_are_paths(config_data):
+    config_data["node"]["ssh"] = ["ssh", "-o", "UserKnownHostsFile=/dev/null", "-i", "keys/k", "root@10.73.0.3"]
+    assert parse(config_data, ROOT).node.ssh == (
+        "ssh", "-o", "UserKnownHostsFile=/dev/null", "-i", str(ROOT / "keys/k"), "root@10.73.0.3",
+    )

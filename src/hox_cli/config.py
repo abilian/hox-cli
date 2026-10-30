@@ -107,15 +107,15 @@ def parse(data: dict, root: Path) -> Config:
     def resolve(value: str) -> Path:
         return (root / Path(value).expanduser()).resolve()
 
-    def ssh_arg(arg: str) -> str:
-        # Relative config files (ssh -F x) resolve against hox.toml's directory.
-        return str(resolve(arg)) if "/" in arg and not arg.startswith("-") else arg
+    def ssh_args(args: tuple[str, ...]) -> tuple[str, ...]:
+        # The files of ssh's -F (config) and -i (key) resolve against hox.toml's directory.
+        return tuple(str(resolve(a)) if prev in ("-F", "-i") else a for prev, a in zip(("",) + args, args))
 
     master = _build(Master, _table(data, "master"), "master")
     master = dataclasses.replace(master, cert=resolve(master.cert), key=resolve(master.key))
     project = _build(Project, _table(data, "project"), "project")
     node = _build(Node, _table(data, "node"), "node")
-    node = dataclasses.replace(node, ssh=tuple(ssh_arg(a) for a in node.ssh))
+    node = dataclasses.replace(node, ssh=ssh_args(node.ssh))
 
     software = {}
     for name, table in _table(data, "software").items():
