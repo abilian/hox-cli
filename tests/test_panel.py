@@ -166,29 +166,34 @@ NODE_FORM = {
 }
 
 
-@pytest.mark.parametrize("answer", [NODE_FORM, {"_embedded": {"_view": NODE_FORM}}])
-def test_create_node(config, answer):
-    master = FakeMaster(existing=True)
+CERTIFICATE = {"reference": "COMP-42", "certificate": "-----BEGIN CERTIFICATE-----…", "key": "-----BEGIN PRIVATE KEY-----…"}
+
+
+def recording(master, answer):
     master.act = lambda url, action, fields=None: master.calls.append((url, action, fields)) or answer
-    assert panel.create_node(master, config) == {
-        "reference": "COMP-42", "certificate": "-----BEGIN CERTIFICATE-----…", "key": "-----BEGIN PRIVATE KEY-----…",
-    }
+    return master
+
+
+def test_node_certificate_creates_the_node(config):
+    master = recording(FakeMaster(existing=True), NODE_FORM)
+    assert panel.node_certificate(master, config) == CERTIFICATE
     assert master.calls == [("project_module/P", "add_slapos_compute_node", {"field_your_title": "hox-node"})]
 
 
-def test_create_node_refuses_a_second_one(config):
-    master = FakeMaster(existing=True)
-    master.rows["Compute Node"] = [{"reference": "COMP-1", "relative_url": "compute_node_module/1"}]
-    with pytest.raises(MasterError, match=r"compute node 'hox-node' exists \(COMP-1\)"):
-        panel.create_node(master, config)
-    assert master.calls == []
+def test_node_certificate_reissues_an_existing_nodes(config):
+    master = recording(FakeMaster(existing=True), NODE_FORM)
+    master.rows["Compute Node"] = [{"reference": "COMP-42", "relative_url": "compute_node_module/42"}]
+    assert panel.node_certificate(master, config) == CERTIFICATE
+    assert master.calls == [
+        ("compute_node_module/42", "revoke_slapos_certificate", None),
+        ("compute_node_module/42", "request_slapos_certificate_action", None),
+    ]
 
 
-def test_create_node_answer_without_certificate(config):
-    master = FakeMaster(existing=True)
-    master.act = lambda url, action, fields=None: {"my_title": {}}
+def test_node_certificate_answer_without_certificate(config):
+    master = recording(FakeMaster(existing=True), {"my_title": {}})
     with pytest.raises(MasterError, match="no your_compute_node_reference, .* in the master's answer; it has: my_title"):
-        panel.create_node(master, config)
+        panel.node_certificate(master, config)
 
 
 class FakeSlap:

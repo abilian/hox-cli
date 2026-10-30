@@ -67,9 +67,9 @@ Every command prints what it does in one line per step and fails with a non-zero
 `hox deploy [SOFTWARE]`
 - `setup`, `request`, then waits for the allocation, for the node's own build (its cron builds what is supplied; up to 8 hours), forces one instance run, and waits for the checks to pass (frontends take a while). Each wait says what it waits for. Run it again after a failure.
 
-`hox create-node`, `hox re6st-token`
+`hox node-certificate`, `hox re6st-token`
 - What a new node's registration needs (node-deployer's `SLAPOS_NODE` and `RE6ST_TOKEN`).
-- `create-node`: the panel's "Add Compute Node" on the project (`Project_addSlapOSComputeNode`), which creates the node and answers with its reference, certificate and key, printed as JSON. Not "Add Compute Node Token": its script reads `configuration_slapos_master_api` from the web site it is called through, which only panel.rapid.space has, and panel.rapid.space doesn't take our client certificate (401); the old `slapos token` API answers 410. The certificate is only given at creation, so it refuses if the node exists.
+- `node-certificate`: the panel's "Add Compute Node" on the project (`Project_addSlapOSComputeNode`), which creates the node and answers (as `application/hal+json`) with a form holding its reference, certificate and key, printed as JSON. Not "Add Compute Node Token": its script reads `configuration_slapos_master_api` from the web site it is called through, which only panel.rapid.space has, and panel.rapid.space doesn't take our client certificate (401); the old `slapos token` API answers 410. The master gives a certificate only once: if the node exists, it runs the node's "Revoke Certificate" then "Request Certificate" (`ComputeNode_revokeCertificate`, `ComputeNode_requestCertificate`), which answers with the same form.
 - `re6st-token`: a shared instance of the re6st registry (`re6st_release`) in its project (`re6st_project`, "Re6st Registries", via the slap request's `project_reference`), whose `token` connection parameter appears after 10+ minutes. Requested under a fixed name, so asking again gives the same token.
 
 `hox api get RELATIVE_URL [--view VIEW]`, `hox api search QUERY [--select FIELD…]` (read-only, for debugging)
@@ -77,7 +77,7 @@ Every command prints what it does in one line per step and fails with a non-zero
 
 ### 1.4 Non-goals
 
-- Setting up the node itself: node-deployer does it (`create-vm.sh` for the VM, `deploy.py` for SlapOS, `bootstrap.sh` for the whole sequence, which calls `hox re6st-token`, `hox create-node` and `hox deploy`).
+- Setting up the node itself: node-deployer does it (`create-vm.sh` for the VM, `deploy.py` for SlapOS, `bootstrap.sh` for the whole sequence, which calls `hox re6st-token`, `hox node-certificate` and `hox deploy`).
 - Several nodes, several projects, or anything about billing.
 - Replacing the `slapos` client for other users; we only cover our loop.
 - Editing or committing in the software repos (`hox` reads git state, never writes it). Bumping the app's pinned `revision` is open (see 4).

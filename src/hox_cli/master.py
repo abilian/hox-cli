@@ -122,7 +122,7 @@ class Api:
             raise MasterError(f"POST {url}: {e}") from e
         if response.is_error:
             raise MasterError(f"POST {url}: HTTP {response.status_code} {response.text[:200]}")
-        if not response.headers.get("content-type", "").startswith("application/json"):
+        if "json" not in response.headers.get("content-type", ""):  # application/json or application/hal+json
             return None  # a redirect
         body = response.json()
         if body.get("portal_status_level") == "error":
@@ -213,7 +213,7 @@ def find_node(api: Api, project: str, title: str) -> ComputeNode:
     """Our compute node, by its title in the project (its reference changes with each registration)."""
     nodes = nodes_titled(api, project, title)
     if len(nodes) != 1:
-        found = f"{len(nodes)} of them" if nodes else "none (`hox create-node`)"
+        found = f"{len(nodes)} of them" if nodes else "none (`hox node-certificate`)"
         raise MasterError(f"compute node {title!r} in {project}: {found}")
     return nodes[0]
 

@@ -388,15 +388,16 @@ def deploy(software: str | None = None) -> int:
 
 
 @app.command
-def create_node():
-    """Create our compute node on the master; print its reference, certificate and key as JSON.
+def node_certificate():
+    """Print our compute node's reference, certificate and key as JSON, creating the node if needed.
 
     The node's title is `[node] title` of hox.toml. node-deployer's deploy.py
-    configures the node with it (SLAPOS_NODE=<the JSON file>). Refuses if a
-    node with that title exists: the certificate is only given at creation.
+    configures the node with it (SLAPOS_NODE=<the JSON file>). If the node
+    exists, its certificate is revoked and a new one issued (the master gives
+    a certificate only once): a node configured with the old one loses access.
     """
     config = _config()
-    _print_json(panel.create_node(_api(config), config))
+    _print_json(panel.node_certificate(_api(config), config))
 
 
 @app.command

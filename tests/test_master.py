@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
@@ -265,6 +266,14 @@ def test_act_runs_a_script_action():
     api.act("project", "add_slapos_software_type")
     assert posts[0][0] == "https://api.vifib.com/project/Project_addSlapOSAllocationSupply"
     assert posts[0][1]["dialog_method"] == ["Project_addSlapOSAllocationSupply"]
+
+
+def test_act_returns_a_form_answered_as_hal_json():
+    # What a script that shows its results answers (Project_addSlapOSComputeNode).
+    form = {"your_compute_node_reference": {"default": "COMP-42"}}
+    reply = httpx2.Response(200, content=json.dumps(form), headers={"content-type": "application/hal+json"})
+    api, _ = forms_api(SCRIPT, reply)
+    assert api.act("project", "add_slapos_software_type") == form
 
 
 def test_act_unknown_action_lists_the_known_ones():

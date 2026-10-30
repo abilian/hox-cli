@@ -24,29 +24,33 @@ def _project(api: Api, config: Config) -> dict:
     return rows[0]
 
 
-def create_node(api: Api, config: Config) -> dict[str, str]:
-    """A new compute node on the master (panel: "Add Compute Node"): its reference, certificate and key.
+def node_certificate(api: Api, config: Config) -> dict[str, str]:
+    """Our compute node's reference, certificate and key, to configure it with.
 
     What `slapos node register` gets with a token, without the token: the
     panel's "Add Compute Node Token" works only through panel.rapid.space,
-    which doesn't take our certificate.
+    which doesn't take our certificate. Creates the node (panel: "Add Compute
+    Node") if none has `[node] title`. Otherwise revokes its certificate and
+    requests a new one, since the master gives a certificate only once: a node
+    still configured with the old one loses access.
     """
-    if existing := nodes_titled(api, config.project.reference, config.node.title):
-        raise MasterError(
-            f"compute node {config.node.title!r} exists ({existing[0].reference}): its certificate is only given"
-            " at creation; request its destruction (panel: compute node → Request Destroy) to start over"
-        )
-    answer = api.act(_project(api, config)["relative_url"], "add_slapos_compute_node", {"field_your_title": config.node.title})
+    nodes = nodes_titled(api, config.project.reference, config.node.title)
+    if len(nodes) > 1:
+        raise MasterError(f"compute node {config.node.title!r}: {len(nodes)} of them")
+    if nodes:
+        api.act(nodes[0].relative_url, "revoke_slapos_certificate")
+        answer = api.act(nodes[0].relative_url, "request_slapos_certificate_action")
+    else:
+        answer = api.act(_project(api, config)["relative_url"], "add_slapos_compute_node", {"field_your_title": config.node.title})
     if answer is None:
-        raise MasterError("the master answered the compute node creation with a redirect, not with its certificate")
+        raise MasterError("the master answered with a redirect, not with the node's certificate")
     # The script answers with a form whose fields hold its results.
-    fields = answer["_embedded"]["_view"] if "_embedded" in answer else answer
     names = {"reference": "your_compute_node_reference", "certificate": "your_compute_node_certificate",
              "key": "your_compute_node_key"}
-    missing = [n for n in names.values() if n not in fields]
+    missing = [n for n in names.values() if n not in answer]
     if missing:
-        raise MasterError(f"no {', '.join(missing)} in the master's answer; it has: {', '.join(fields)}")
-    return {name: fields[field]["default"] for name, field in names.items()}
+        raise MasterError(f"no {', '.join(missing)} in the master's answer; it has: {', '.join(answer)}")
+    return {name: answer[field]["default"] for name, field in names.items()}
 
 
 def re6st_token(api: Api, slap: Slap, config: Config, out=print, sleep=time.sleep) -> str:
