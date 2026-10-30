@@ -19,6 +19,17 @@ class DevError(Exception):
     pass
 
 
+def wait_for(what: str, find, sleep=time.sleep, poll: int = 5, timeout: int = 180):
+    """The first of find()'s results, once there is one."""
+    waited = 0
+    while not (rows := find()):
+        if waited >= timeout:
+            raise DevError(f"{what}: still not there after {waited // 60} min {waited % 60} s")
+        sleep(poll)
+        waited += poll
+    return rows[0]
+
+
 def require_pushed(sw: Software) -> str:
     """The local branch head, if origin has it too (asks the remote: no fetch, no write)."""
     head = git(sw.checkout, "rev-parse", sw.branch).strip()

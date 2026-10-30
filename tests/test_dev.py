@@ -35,7 +35,7 @@ def software(checkout: Path, checks=()) -> Software:
     return Software(
         name="mynij-proxy", repo="abilian/slapos_abilian_edge", checkout=checkout, branch="mynij-proxy",
         path="software/mynij-proxy/software.cfg", software_type="default", product="mynij-proxy",
-        supply_title="s", instance="mynij-proxy-3", checks=checks,
+        instance="mynij-proxy-3", checks=checks,
     )
 
 

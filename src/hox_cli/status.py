@@ -53,11 +53,11 @@ class Report:
     github: GitHub | None = None
 
 
-def gather(config: Config, sw: Software, api: Api, node: Node, http: httpx2.Client) -> Report:
+def gather(config: Config, sw: Software, api: Api, node: Node, http: httpx2.Client, node_reference: str) -> Report:
     report = Report(sw.name, instance(api, sw.instance))
     if report.instance and report.instance.partition is None:
         report.diagnosis = allocation_diagnosis(api, config, sw, report.instance)
-    report.installations = installations(api, config.node.reference)
+    report.installations = installations(api, node_reference)
     try:
         report.node = node.facts([i.url for i in report.installations])
     except NodeError as e:

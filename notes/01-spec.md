@@ -64,12 +64,18 @@ Every command prints what it does in one line per step and fails with a non-zero
 - One-time, idempotent project setup, the panel work of 2026-10-28/29: Software Product with the software type, branch URL as a release, Allocation Supply on our node with the cell ticked and validated, branch URL supplied. Prints what already existed and what it created.
 - `hox setup --frontend` (not built yet, needs the Remote Node first): Software Product `apache-frontend` (release `http://git.erp5.org/gitweb/slapos.git/blob_plain/HEAD:/software/apache-frontend/software.cfg`, type `default`) and an Allocation Supply on the project's Remote Node to the CDN. Needs the Remote Node, which Rapid.Space support has to make possible (we're not a member of Canary.CDN, PROJ-318); fails with that explanation if there is none.
 
+`hox deploy [SOFTWARE]`
+- `setup`, `request`, then waits for the allocation, for the node's own build (its cron builds what is supplied; up to 8 hours), forces one instance run, and waits for the checks to pass (frontends take a while). Each wait says what it waits for. Run it again after a failure.
+
+`hox token compute-node|re6st`
+- The two single-use tokens a new node's registration needs (node-deployer's `SLAPOS_TOKEN` and `RE6ST_TOKEN`): the panel's "Add Compute Node Token" on the project, and a shared instance of the re6st registry (`re6st_release`) in its project (`re6st_project`, "Re6st Registries"), whose `token` connection parameter appears after 10+ minutes. The re6st one is requested under a fixed name, so asking again gives the same token.
+
 `hox api get RELATIVE_URL [--view VIEW]`, `hox api search QUERY [--select FIELD…]` (read-only, for debugging)
 - Raw access to the master's API (what our ad-hoc scripts did), printing JSON.
 
 ### 1.4 Non-goals
 
-- Setting up the node itself (node-deployer does it).
+- Setting up the node itself: node-deployer does it (`create-vm.sh` for the VM, `deploy.py` for SlapOS, `bootstrap.sh` for the whole sequence, which calls `hox token` and `hox deploy`).
 - Several nodes, several projects, or anything about billing.
 - Replacing the `slapos` client for other users; we only cover our loop.
 - Editing or committing in the software repos (`hox` reads git state, never writes it). Bumping the app's pinned `revision` is open (see 4).
@@ -113,7 +119,7 @@ Split further only if a module grows past a few hundred lines.
 
 ### 2.3 Configuration
 
-`hox.toml`, found in the current directory or its parents (the workspace root holds ours), or given with `--config`. Parsed once into frozen dataclasses; unknown keys and missing required keys are errors at startup.
+`hox.toml`, found in the current directory or its parents (the workspace root holds ours; `hox.example.toml` is a commented copy), or given with `--config`. Parsed once into frozen dataclasses; unknown keys and missing required keys are errors at startup.
 
 ```toml
 [master]
@@ -126,8 +132,10 @@ api_tls_name = "slap.vifib.com"          # see 2.4
 reference = "PROJ-20261026.009-F09D5B"
 
 [node]
-reference = "COMP-20261027.021-9D1365"
+title = "hox-node"                         # its reference is looked up on the master
 ssh = ["ssh", "-F", "node-deployer/ssh_config", "hox-node"]   # relative paths resolve against hox.toml's directory
+re6st_project = "PROJ-112"                 # `hox token re6st`
+re6st_release = "https://lab.nexedi.com/nexedi/slapos/-/raw/1.0.404/software/re6stnet/software.cfg"
 
 [software.mynij-proxy]
 repo = "abilian/slapos_abilian_edge"
@@ -135,9 +143,8 @@ checkout = "slapos_abilian_edge"           # local clone, for git checks
 branch = "mynij-proxy"
 path = "software/mynij-proxy/software.cfg"
 software_type = "default"
-product = "mynij-proxy"
-supply_title = "mynij-proxy on abilian-hox-node-1"
-instance = "mynij-proxy-3"
+product = "mynij-proxy"                    # its Allocation Supply is "mynij-proxy on hox-node"
+instance = "mynij-proxy-4"
 
 [[software.mynij-proxy.checks]]
 name = "backend ping"
@@ -200,6 +207,7 @@ Facts read from the node: software dirs (`/opt/slapgrid/<md5(url)>`, `.completed
 3. `supply`, `request`, `destroy` (slap protocol).
 4. Form submission spike: one harmless write (add a software type to the product and remove it again) to confirm that certificate auth works for form POSTs. If it doesn't, find out how the panel authenticates (cookie from a login) before going further.
 5. `setup`, `release`, `setup --frontend`. Done: `setup` and `release`, live-tested on 2026-10-29 for the parts that existed already and for a new release (added, cell ticked on the validated supply, supplied). Creating a product, a supply and its lines, and validating a supply are covered only by tests: they run for a new software. `setup --frontend` waits for the Remote Node.
+6. `deploy`, `token`, and the node found by its title (`[node] title`; the reference changes with each registration), for a rebuild from scratch on a new VM (2026-10-30). Not run live yet, apart from the read-only lookups.
 
 ## 4. Open questions
 

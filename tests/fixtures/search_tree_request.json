@@ -4,6 +4,7 @@
   "contents": [
    {
     "text_content": "<?xml version='1.0' encoding='utf-8'?>\n<instance/>\n",
+    "follow_up_reference": "PROJ-20261026.009-F09D5B",
     "source_reference": "default",
     "root_slave": 0,
     "sla_xml": "<?xml version='1.0' encoding='utf-8'?>\n<instance>\n  <parameter id=\"computer_guid\">COMP-20261027.021-9D1365</parameter>\n</instance>\n",
@@ -24,7 +25,8 @@
   "sla_xml",
   "text_content",
   "root_slave",
-  "slap_state"
+  "slap_state",
+  "follow_up_reference"
  ],
  "_local_roles": null,
  "_query": "portal_type:\"Instance Tree\" AND validation_state:validated AND title:=\"mynij-proxy-3\"",

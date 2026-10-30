@@ -80,12 +80,13 @@ class Api:
             params["view"] = view
         return self._get_json(expand(self._template("traverse"), params))
 
-    def act(self, relative_url: str, action: str, fields: dict[str, str] | None = None) -> None:
+    def act(self, relative_url: str, action: str, fields: dict[str, str] | None = None) -> dict | None:
         """Submit one of a document's actions as the panel does: a fast input dialog
         (add_slapos_software_type), a workflow transition (validate_action) or a script.
 
         `fields` are keyed as the form keys them (field_your_software_type); every
-        other field of the form is sent with its default.
+        other field of the form is sent with its default. Returns the master's
+        answer when it is JSON (a script may answer with a form of its results).
         """
         links = [
             link
@@ -102,17 +103,17 @@ class Api:
         data = {f["key"]: f["default"] or "" for f in form.values() if isinstance(f, dict) and "key" in f}
         # The method is in _actions.put for dialogs, next to it for scripts.
         data["dialog_method"] = actions["put"].get("action") or actions["action"]
-        self._post(actions["put"]["href"], data | (fields or {}))
+        return self._post(actions["put"]["href"], data | (fields or {}))
 
-    def edit(self, relative_url: str, fields: dict[str, str]) -> None:
-        """Change fields of a document's view, keyed as the form keys them (field_my_title).
+    def edit(self, relative_url: str, fields: dict[str, str], view: str = "view") -> None:
+        """Change fields of one of a document's views, keyed as the form keys them (field_my_title).
 
         Base_edit skips the fields absent from the POST: the others keep their values.
         """
-        view = self.get(relative_url, "view")["_embedded"]["_view"]
-        self._post(view["_actions"]["put"]["href"], {"form_id": view["form_id"]["default"], **fields})
+        form = self.get(relative_url, view)["_embedded"]["_view"]
+        self._post(form["_actions"]["put"]["href"], {"form_id": form["form_id"]["default"], **fields})
 
-    def _post(self, url: str, data: dict) -> None:
+    def _post(self, url: str, data: dict) -> dict | None:
         try:
             response = self._client.post(
                 url, data=data, extensions=self._extensions, headers={"Accept": "application/hal+json"}
@@ -121,10 +122,12 @@ class Api:
             raise MasterError(f"POST {url}: {e}") from e
         if response.is_error:
             raise MasterError(f"POST {url}: HTTP {response.status_code} {response.text[:200]}")
-        if response.headers.get("content-type", "").startswith("application/json"):
-            body = response.json()
-            if body.get("portal_status_level") == "error":
-                raise MasterError(f"POST {url}: {body.get('portal_status_message')}")
+        if not response.headers.get("content-type", "").startswith("application/json"):
+            return None  # a redirect
+        body = response.json()
+        if body.get("portal_status_level") == "error":
+            raise MasterError(f"POST {url}: {body.get('portal_status_message')}")
+        return body
 
 
 def _get(client: httpx2.Client, url: str, extensions: dict | None = None) -> httpx2.Response:
@@ -176,9 +179,11 @@ class Request:
     parameters: dict[str, str] = field(default_factory=dict)
     shared: bool = False
     state: str = "started"
+    project: str | None = None  # without it, the master guesses (from the filter or the release)
 
     def form(self) -> dict[str, str]:
-        return {
+        project = {"project_reference": self.project} if self.project else {}
+        return project | {
             "software_release": self.software_release,
             "partition_reference": self.reference,
             "software_type": self.software_type,
@@ -189,6 +194,27 @@ class Request:
         }
 
 
+@dataclass(frozen=True)
+class ComputeNode:
+    reference: str
+    relative_url: str
+
+
+def find_node(api: Api, project: str, title: str) -> ComputeNode:
+    """Our compute node, by its title in the project (its reference changes with each registration)."""
+    rows = api.search(
+        f'portal_type:"Compute Node" AND validation_state:validated AND follow_up_reference:={quoted(project)}'
+        f" AND title:={quoted(title)}",
+        ["reference", "relative_url"],
+    )
+    if len(rows) != 1:
+        found = f"{len(rows)} of them" if rows else "none"
+        raise MasterError(
+            f"compute node {title!r} in {project}: {found} (node-deployer registers it; invalidate the extra ones)"
+        )
+    return ComputeNode(rows[0]["reference"], rows[0]["relative_url"])
+
+
 def stored_request(api: Api, reference: str) -> Request | None:
     """The request an instance tree was created with, read back from the master.
 
@@ -197,7 +223,7 @@ def stored_request(api: Api, reference: str) -> Request | None:
     """
     trees = api.search(
         f"portal_type:\"Instance Tree\" AND validation_state:validated AND title:={quoted(reference)}",
-        ["url_string", "source_reference", "sla_xml", "text_content", "root_slave", "slap_state"],
+        ["url_string", "source_reference", "sla_xml", "text_content", "root_slave", "slap_state", "follow_up_reference"],
     )
     if not trees:
         return None
@@ -210,6 +236,7 @@ def stored_request(api: Api, reference: str) -> Request | None:
         parameters=instance_xml(tree["text_content"]),
         shared=bool(tree["root_slave"]),
         state=_STATES[tree["slap_state"]],
+        project=tree["follow_up_reference"],
     )
 
 

@@ -10,11 +10,12 @@ import httpx2
 from cyclopts import App, Parameter
 
 from . import config as config_module
+from . import deploy as deploy_module
 from . import dev, panel
 from . import status as status_module
 from .config import Config, ConfigError, Software
 from .dev import DevError
-from .master import Api, MasterError, Request, Slap, next_name, stored_request
+from .master import Api, ComputeNode, MasterError, Request, Slap, find_node, next_name, stored_request
 from .node import INSTANCE_LOG, SLAPGRID_PROMISE_FAIL, SOFTWARE_LOG, Node, NodeError
 
 app = App(name="hox", help="Drive our SlapOS work on Rapid.Space from the terminal.")
@@ -30,6 +31,10 @@ def _config() -> Config:
 
 def _api(config: Config) -> Api:
     return Api.connect(config.master)
+
+
+def _node(config: Config, api: Api) -> ComputeNode:
+    return find_node(api, config.project.reference, config.node.title)
 
 
 def _print_json(data) -> None:
@@ -80,7 +85,8 @@ def status(software: str | None = None, *, json_: Annotated[bool, Parameter(name
     config = _config()
     sw = config.software_named(software)
     with httpx2.Client(timeout=30) as http:
-        report = status_module.gather(config, sw, _api(config), Node(config.node.ssh), http)
+        api = _api(config)
+        report = status_module.gather(config, sw, api, Node(config.node.ssh), http, _node(config, api).reference)
     if json_:
         _print_json(dataclasses.asdict(report))
     else:
@@ -246,8 +252,9 @@ def supply(software: str | None = None, *, pinned: str | None = None, remove: bo
     """
     config = _config()
     url = _url(config.software_named(software), pinned)
-    Slap.connect(config.master).supply(url, config.node.reference, "destroyed" if remove else "available")
-    print(f"{'removal' if remove else 'supply'} of {url} on {config.node.reference} requested")
+    node = _node(config, _api(config))
+    Slap.connect(config.master).supply(url, node.reference, "destroyed" if remove else "available")
+    print(f"{'removal' if remove else 'supply'} of {url} on {node.reference} requested")
 
 
 @app.command
@@ -289,7 +296,7 @@ def request(
         name, existing = next_name(name), None
         while stored_request(api, name):
             name = next_name(name)
-    req = existing or Request(url, name, sw.software_type, {"computer_guid": config.node.reference})
+    req = existing or Request(url, name, sw.software_type, {"computer_guid": _node(config, api).reference})
     ready = slap.request(dataclasses.replace(req, state="started"))
     print(f"{name}: {'requested' if ready else 'requested, the master is provisioning it'} ({url})")
     if name != sw.instance:
@@ -320,9 +327,11 @@ def _make_allocatable(software: str | None, pinned: str | None) -> None:
     config = _config()
     sw = config.software_named(software)
     url = _url(sw, pinned)
-    panel.make_allocatable(_api(config), config, sw, url)
-    Slap.connect(config.master).supply(url, config.node.reference)
-    print(f"supply of {url} on {config.node.reference}: requested")
+    api = _api(config)
+    node = _node(config, api)
+    panel.make_allocatable(api, config, node, sw, url)
+    Slap.connect(config.master).supply(url, node.reference)
+    print(f"supply of {url} on {node.reference}: requested")
 
 
 @app.command
@@ -355,6 +364,55 @@ def release(commit: str, *, software: str | None = None):
         A [software.<name>] of hox.toml; optional when there is only one.
     """
     _make_allocatable(software, commit)
+
+
+@app.command
+def deploy(software: str | None = None) -> int:
+    """From nothing on the master to an instance that passes its checks, for the branch URL.
+
+    `hox setup`, `hox request`, then waits: for the allocation, for the node's
+    build (hours for a big release without cache), for the checks (frontends
+    take a while). Run it again after a failure: what is done is skipped.
+
+    Parameters
+    ----------
+    software
+        A [software.<name>] of hox.toml; optional when there is only one.
+    """
+    _make_allocatable(software, None)
+    request(software)
+    config = _config()
+    sw = config.software_named(software)
+    results = deploy_module.deploy(_api(config), sw, sw.branch_url, Node(config.node.ssh))
+    return _report_checks(results)
+
+
+@app.command
+def token(kind: Literal["compute-node", "re6st"]):
+    """Print a token for registering a new node (node-deployer's SLAPOS_TOKEN, RE6ST_TOKEN).
+
+    compute-node: a new single-use token for `slapos node register`, each time.
+    re6st: the node's re6st token, from a shared instance of the registry
+    ("re6st token for <node title>"); the same one each time. The registry
+    takes 10+ minutes to publish a new one.
+
+    Only the token goes to stdout.
+
+    Parameters
+    ----------
+    kind
+        compute-node or re6st.
+    """
+    config = _config()
+    api = _api(config)
+    if kind == "compute-node":
+        print(panel.compute_node_token(api, config))
+    else:
+        print(panel.re6st_token(api, Slap.connect(config.master), config, out=_stderr))
+
+
+def _stderr(line: str) -> None:
+    print(line, file=sys.stderr)
 
 
 @app.meta.default

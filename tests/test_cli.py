@@ -9,7 +9,7 @@ from conftest import BRANCH_URL
 from hox_cli import cli
 from hox_cli.config import parse
 from hox_cli.dev import DevError
-from hox_cli.master import Request
+from hox_cli.master import ComputeNode, Request
 
 PINNED = BRANCH_URL.replace("/mynij-proxy/software/", "/abc123/software/")
 
@@ -31,6 +31,7 @@ def master(config_data, monkeypatch):
     slap = FakeSlap()
     monkeypatch.setattr(cli, "_config", lambda: config)
     monkeypatch.setattr(cli, "_api", lambda c: None)
+    monkeypatch.setattr(cli, "_node", lambda c, api: ComputeNode("COMP-20261027.021-9D1365", "compute_node_module/1"))
     monkeypatch.setattr(cli.Slap, "connect", lambda m: slap)
     monkeypatch.setattr(cli, "stored_request", lambda api, name: instances.get(name))
     monkeypatch.setattr(cli.dev, "pushed_commit", lambda sw, commit: commit)

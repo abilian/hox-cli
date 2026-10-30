@@ -14,11 +14,17 @@ api_tls_name = "slap.vifib.com"
 reference = "PROJ-20261026.009-F09D5B"  # Abilian (HyperOpenX)
 
 [node]
-reference = "COMP-20261027.021-9D1365"  # abilian-hox-node-1
+# Its title on the master (node-deployer registers it under this name); hox
+# looks its reference up there, so a new registration needs no change here.
+title = "hox-node"
 # How to run a command on the node as root; hox appends the command.
 ssh = ["ssh", "-F", "node-deployer/ssh_config", "-o", "LogLevel=ERROR", "hox-node"]
+# `hox token re6st`: the registry's project ("Re6st Registries") and release.
+re6st_project = "PROJ-112"
+re6st_release = "https://lab.nexedi.com/nexedi/slapos/-/raw/1.0.404/software/re6stnet/software.cfg"
 
-# One table per software release we develop.
+# One table per software release we develop. Its Allocation Supply is titled
+# "<product> on <node title>".
 [software.mynij-proxy]
 repo = "abilian/slapos_abilian_edge"  # GitHub repo the node fetches from
 checkout = "slapos_abilian_edge"  # local clone of it
@@ -26,8 +32,9 @@ branch = "mynij-proxy"  # gives the branch URL
 path = "software/mynij-proxy/software.cfg"
 software_type = "default"
 product = "mynij-proxy"  # Software Product title on the master
-supply_title = "mynij-proxy on abilian-hox-node-1"  # Allocation Supply title
-instance = "mynij-proxy-3"  # instance tree name; `hox request --replace` says when to bump it
+# Instance tree name. An instance stays on the node it was first requested on:
+# a new node, or a new URL with `hox request --replace`, means a new name.
+instance = "mynij-proxy-4"
 
 # Checks run by `hox check` and `hox rebuild`, with curl on the node. URLs take
 # the instance's connection parameters ({backend-url}, {url}, …); a check whose
@@ -47,3 +54,22 @@ name = "CORS"
 url = "{backend-url}/proxy?url=https://example.org/"
 headers = { Origin = "https://example.org" }
 expect_header = { access-control-allow-origin = "https://example.org" }
+
+[software.abilian-sbe]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos_abilian_edge"
+branch = "hox_sbe_edge_2026_py313"
+path = "software/abilian-sbe/software.cfg"
+software_type = "default"
+product = "abilian-sbe"
+instance = "abilian-sbe-1"
+
+# No expected status yet: any HTTP answer passes. Tighten once we know what /
+# answers (probably a redirect to the login page).
+[[software.abilian-sbe.checks]]
+name = "backend"
+url = "{backend-url}/"
+
+[[software.abilian-sbe.checks]]
+name = "frontend"
+url = "{url}/"

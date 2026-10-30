@@ -6,7 +6,20 @@ import pytest
 
 from conftest import fixture_json
 from hox_cli.config import Master
-from hox_cli.master import Api, MasterError, Request, Slap, expand, instance_xml, marshal, next_name, quoted, stored_request
+from hox_cli.master import (
+    Api,
+    ComputeNode,
+    MasterError,
+    Request,
+    Slap,
+    expand,
+    find_node,
+    instance_xml,
+    marshal,
+    next_name,
+    quoted,
+    stored_request,
+)
 
 SEARCH = "https://api.vifib.com/ERP5Document_getHateoas?mode=search{&query,select_list*,limit*,group_by*}"
 MASTER = Master("https://slap.vifib.com/", Path("/c.crt"), Path("/c.key"), "slap.vifib.com")
@@ -137,6 +150,7 @@ def test_stored_request_reads_back_the_original():
         parameters={},
         shared=False,
         state="started",
+        project="PROJ-20261026.009-F09D5B",
     )
 
 
@@ -270,3 +284,38 @@ def test_edit_posts_only_the_given_fields():
     api.edit("doc", {"field_my_description": "x"})
     assert posts == [("https://api.vifib.com/doc/Base_edit",
                       {"form_id": ["SoftwareProduct_view"], "field_my_description": ["x"]})]
+
+
+def test_request_into_another_project():
+    seen = []
+    slap_with(200, seen).request(Request(BRANCH_URL, "t", "default", {}, shared=True, project="PROJ-112"))
+    form = seen[0][1]
+    assert form["project_reference"] == ["PROJ-112"]
+    assert form["shared_xml"] == [marshal(True)]
+
+
+def test_request_without_project_lets_the_master_choose():
+    seen = []
+    slap_with(200, seen).request(REQUEST)
+    assert "project_reference" not in seen[0][1]
+
+
+class Nodes:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def search(self, query, select, limit=100):
+        assert 'follow_up_reference:="P" AND title:="hox-node"' in query
+        return self.rows
+
+
+def test_find_node():
+    assert find_node(Nodes([{"reference": "COMP-9", "relative_url": "compute_node_module/9"}]), "P", "hox-node") == (
+        ComputeNode("COMP-9", "compute_node_module/9")
+    )
+
+
+@pytest.mark.parametrize("rows, found", [([], "none"), ([{}, {}], "2 of them")])
+def test_find_node_needs_exactly_one(rows, found):
+    with pytest.raises(MasterError, match=f"compute node 'hox-node' in P: {found}"):
+        find_node(Nodes(rows), "P", "hox-node")
