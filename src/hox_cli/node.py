@@ -5,6 +5,7 @@ import re
 import shlex
 import subprocess
 import time
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -41,6 +42,8 @@ SLAPGRID_OK, SLAPGRID_FAIL, SLAPGRID_PROMISE_FAIL = 0, 1, 2
 SLAPGRID_BUSY = 10  # another run (the node's cron) holds the pidfile
 BUSY_RETRY_SECONDS = 15
 BUSY_TIMEOUT_SECONDS = 15 * 60
+SSH_FAILED = 255  # ssh's own failure, not the remote command's
+TAIL_LINES = 10  # of a failed run, in the error
 
 # What `hox rebuild` shows of a slapgrid run: parts that change (buildout says
 # "Updating x." for every unchanged one), errors and the end of each run.
@@ -67,13 +70,19 @@ class Node:
             raise NodeError(f"{shlex.join(self._ssh)} {command!r}: exit {result.returncode}: {result.stderr.strip()[-500:]}")
         return result.stdout
 
-    def stream(self, command: str, keep, out=print) -> int:
-        """Run command, pass the lines that `keep` accepts to `out`, return its exit code."""
+    def stream(self, command: str, keep, out=print) -> tuple[int, list[str]]:
+        """Run command, pass the lines that `keep` accepts to `out`.
+
+        Returns its exit code and its last lines, shown or not (ssh's own errors included).
+        """
+        last = deque(maxlen=TAIL_LINES)
         with self._popen([*self._ssh, command], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
             for line in proc.stdout:
-                if keep(line.rstrip("\n")):
-                    out(line.rstrip("\n"))
-        return proc.returncode
+                line = line.rstrip("\n")
+                last.append(line)
+                if keep(line):
+                    out(line)
+        return proc.returncode, list(last)
 
     def interactive(self, command: str) -> int:
         """Run command with the terminal attached (tail -F), return its exit code."""
@@ -86,7 +95,7 @@ class Node:
         """
         waited = 0
         while True:
-            code = self.stream(f"slapos node {args}", shown, out)
+            code, last = self.stream(f"slapos node {args}", shown, out)
             if code != SLAPGRID_BUSY:
                 break
             if waited >= BUSY_TIMEOUT_SECONDS:
@@ -95,7 +104,8 @@ class Node:
             self._sleep(BUSY_RETRY_SECONDS)
             waited += BUSY_RETRY_SECONDS
         if code not in (SLAPGRID_OK, SLAPGRID_PROMISE_FAIL):
-            raise NodeError(f"slapos node {args}: exit {code}")
+            what = "ssh failed" if code == SSH_FAILED else f"exit {code}"
+            raise NodeError(f"slapos node {args}: {what}; its last lines:\n" + "\n".join(last))
         return code
 
     def facts(self, urls: list[str]) -> NodeFacts:

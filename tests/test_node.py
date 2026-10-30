@@ -137,3 +137,9 @@ def test_slapgrid_failure():
     popen, _ = popen_returning((["INFO Error: boom"], 1))
     with pytest.raises(NodeError, match="exit 1"):
         Node(("ssh", "h"), popen=popen).slapgrid("software", out=lambda _: None)
+
+
+def test_ssh_failure_shows_what_ssh_said():
+    popen, _ = popen_returning((["INFO Updating ncurses.", "Connection to 10.73.0.3 closed by remote host."], 255))
+    with pytest.raises(NodeError, match="ssh failed; its last lines:\nINFO Updating ncurses.\nConnection to 10.73.0.3 closed"):
+        Node(("ssh", "h"), popen=popen).slapgrid("software", out=lambda _: None)
