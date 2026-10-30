@@ -9,7 +9,7 @@ import time
 
 from .config import Config, Software
 from .dev import wait_for
-from .master import Api, ComputeNode, MasterError, Request, Slap, quoted
+from .master import Api, ComputeNode, MasterError, Request, Slap, nodes_titled, quoted
 from .status import ALLOCABLE, matrix_cells, ticked_cells
 
 RE6ST_POLL_SECONDS = 30
@@ -24,16 +24,29 @@ def _project(api: Api, config: Config) -> dict:
     return rows[0]
 
 
-def compute_node_token(api: Api, config: Config) -> str:
-    """A new single-use token for `slapos node register` (panel: "Add Compute Node Token")."""
-    answer = api.act(_project(api, config)["relative_url"], "add_slapos_compute_node_token")
+def create_node(api: Api, config: Config) -> dict[str, str]:
+    """A new compute node on the master (panel: "Add Compute Node"): its reference, certificate and key.
+
+    What `slapos node register` gets with a token, without the token: the
+    panel's "Add Compute Node Token" works only through panel.rapid.space,
+    which doesn't take our certificate.
+    """
+    if existing := nodes_titled(api, config.project.reference, config.node.title):
+        raise MasterError(
+            f"compute node {config.node.title!r} exists ({existing[0].reference}): its certificate is only given"
+            " at creation; request its destruction (panel: compute node → Request Destroy) to start over"
+        )
+    answer = api.act(_project(api, config)["relative_url"], "add_slapos_compute_node", {"field_your_title": config.node.title})
     if answer is None:
-        raise MasterError("the master answered the token request with a redirect, not with the token")
+        raise MasterError("the master answered the compute node creation with a redirect, not with its certificate")
     # The script answers with a form whose fields hold its results.
     fields = answer["_embedded"]["_view"] if "_embedded" in answer else answer
-    if "your_access_token" not in fields:
-        raise MasterError(f"no token in the master's answer; it has: {', '.join(fields)}")
-    return fields["your_access_token"]["default"]
+    names = {"reference": "your_compute_node_reference", "certificate": "your_compute_node_certificate",
+             "key": "your_compute_node_key"}
+    missing = [n for n in names.values() if n not in fields]
+    if missing:
+        raise MasterError(f"no {', '.join(missing)} in the master's answer; it has: {', '.join(fields)}")
+    return {name: fields[field]["default"] for name, field in names.items()}
 
 
 def re6st_token(api: Api, slap: Slap, config: Config, out=print, sleep=time.sleep) -> str:

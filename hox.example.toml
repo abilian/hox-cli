@@ -19,7 +19,7 @@ reference = "PROJ-20261026.009-F09D5B"  # Abilian (HyperOpenX)
 title = "hox-node"
 # How to run a command on the node as root; hox appends the command.
 ssh = ["ssh", "-F", "node-deployer/ssh_config", "-o", "LogLevel=ERROR", "hox-node"]
-# `hox token re6st`: the registry's project ("Re6st Registries") and release.
+# `hox re6st-token`: the registry's project ("Re6st Registries") and release.
 re6st_project = "PROJ-112"
 re6st_release = "https://lab.nexedi.com/nexedi/slapos/-/raw/1.0.404/software/re6stnet/software.cfg"
 

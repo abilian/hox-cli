@@ -158,22 +158,37 @@ def test_gives_up_when_the_catalog_never_shows_it(config):
         run(master, config)
 
 
-TOKEN_FORM = {"your_access_token": {"default": "20261030-ABC"}, "your_command_line": {"default": "wget …"}}
+NODE_FORM = {
+    "your_compute_node_reference": {"default": "COMP-42"},
+    "your_compute_node_certificate": {"default": "-----BEGIN CERTIFICATE-----…"},
+    "your_compute_node_key": {"default": "-----BEGIN PRIVATE KEY-----…"},
+    "your_compute_node_relative_url": {"default": "compute_node_module/42"},
+}
 
 
-@pytest.mark.parametrize("answer", [TOKEN_FORM, {"_embedded": {"_view": TOKEN_FORM}}])
-def test_compute_node_token(config, answer):
+@pytest.mark.parametrize("answer", [NODE_FORM, {"_embedded": {"_view": NODE_FORM}}])
+def test_create_node(config, answer):
     master = FakeMaster(existing=True)
-    master.act = lambda url, action, fields=None: master.calls.append((url, action)) or answer
-    assert panel.compute_node_token(master, config) == "20261030-ABC"
-    assert master.calls == [("project_module/P", "add_slapos_compute_node_token")]
+    master.act = lambda url, action, fields=None: master.calls.append((url, action, fields)) or answer
+    assert panel.create_node(master, config) == {
+        "reference": "COMP-42", "certificate": "-----BEGIN CERTIFICATE-----…", "key": "-----BEGIN PRIVATE KEY-----…",
+    }
+    assert master.calls == [("project_module/P", "add_slapos_compute_node", {"field_your_title": "hox-node"})]
 
 
-def test_compute_node_token_missing(config):
+def test_create_node_refuses_a_second_one(config):
+    master = FakeMaster(existing=True)
+    master.rows["Compute Node"] = [{"reference": "COMP-1", "relative_url": "compute_node_module/1"}]
+    with pytest.raises(MasterError, match=r"compute node 'hox-node' exists \(COMP-1\)"):
+        panel.create_node(master, config)
+    assert master.calls == []
+
+
+def test_create_node_answer_without_certificate(config):
     master = FakeMaster(existing=True)
     master.act = lambda url, action, fields=None: {"my_title": {}}
-    with pytest.raises(MasterError, match="no token in the master's answer; it has: my_title"):
-        panel.compute_node_token(master, config)
+    with pytest.raises(MasterError, match="no your_compute_node_reference, .* in the master's answer; it has: my_title"):
+        panel.create_node(master, config)
 
 
 class FakeSlap:

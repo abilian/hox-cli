@@ -200,19 +200,22 @@ class ComputeNode:
     relative_url: str
 
 
-def find_node(api: Api, project: str, title: str) -> ComputeNode:
-    """Our compute node, by its title in the project (its reference changes with each registration)."""
+def nodes_titled(api: Api, project: str, title: str) -> list[ComputeNode]:
     rows = api.search(
         f'portal_type:"Compute Node" AND validation_state:validated AND follow_up_reference:={quoted(project)}'
         f" AND title:={quoted(title)}",
         ["reference", "relative_url"],
     )
-    if len(rows) != 1:
-        found = f"{len(rows)} of them" if rows else "none"
-        raise MasterError(
-            f"compute node {title!r} in {project}: {found} (node-deployer registers it; invalidate the extra ones)"
-        )
-    return ComputeNode(rows[0]["reference"], rows[0]["relative_url"])
+    return [ComputeNode(r["reference"], r["relative_url"]) for r in rows]
+
+
+def find_node(api: Api, project: str, title: str) -> ComputeNode:
+    """Our compute node, by its title in the project (its reference changes with each registration)."""
+    nodes = nodes_titled(api, project, title)
+    if len(nodes) != 1:
+        found = f"{len(nodes)} of them" if nodes else "none (`hox create-node`)"
+        raise MasterError(f"compute node {title!r} in {project}: {found}")
+    return nodes[0]
 
 
 def stored_request(api: Api, reference: str) -> Request | None:

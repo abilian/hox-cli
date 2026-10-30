@@ -30,7 +30,7 @@ class Project:
 class Node:
     title: str  # on the master; hox looks its reference up there
     ssh: tuple[str, ...]
-    # Where `hox token re6st` requests the node's re6st token (panel: "Re6st Registries").
+    # Where `hox re6st-token` requests the node's re6st token (panel: "Re6st Registries").
     re6st_project: str
     re6st_release: str
 

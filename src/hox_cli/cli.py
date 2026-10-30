@@ -388,27 +388,27 @@ def deploy(software: str | None = None) -> int:
 
 
 @app.command
-def token(kind: Literal["compute-node", "re6st"]):
-    """Print a token for registering a new node (node-deployer's SLAPOS_TOKEN, RE6ST_TOKEN).
+def create_node():
+    """Create our compute node on the master; print its reference, certificate and key as JSON.
 
-    compute-node: a new single-use token for `slapos node register`, each time.
-    re6st: the node's re6st token, from a shared instance of the registry
-    ("re6st token for <node title>"); the same one each time. The registry
-    takes 10+ minutes to publish a new one.
-
-    Only the token goes to stdout.
-
-    Parameters
-    ----------
-    kind
-        compute-node or re6st.
+    The node's title is `[node] title` of hox.toml. node-deployer's deploy.py
+    configures the node with it (SLAPOS_NODE=<the JSON file>). Refuses if a
+    node with that title exists: the certificate is only given at creation.
     """
     config = _config()
-    api = _api(config)
-    if kind == "compute-node":
-        print(panel.compute_node_token(api, config))
-    else:
-        print(panel.re6st_token(api, Slap.connect(config.master), config, out=_stderr))
+    _print_json(panel.create_node(_api(config), config))
+
+
+@app.command
+def re6st_token():
+    """Print the node's re6st token, for node-deployer (RE6ST_TOKEN).
+
+    It comes from a shared instance of the re6st registry ("re6st token for
+    <node title>"), so asking again gives the same token. The registry takes
+    10+ minutes to publish a new one. Only the token goes to stdout.
+    """
+    config = _config()
+    print(panel.re6st_token(_api(config), Slap.connect(config.master), config, out=_stderr))
 
 
 def _stderr(line: str) -> None:

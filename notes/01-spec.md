@@ -67,15 +67,17 @@ Every command prints what it does in one line per step and fails with a non-zero
 `hox deploy [SOFTWARE]`
 - `setup`, `request`, then waits for the allocation, for the node's own build (its cron builds what is supplied; up to 8 hours), forces one instance run, and waits for the checks to pass (frontends take a while). Each wait says what it waits for. Run it again after a failure.
 
-`hox token compute-node|re6st`
-- The two single-use tokens a new node's registration needs (node-deployer's `SLAPOS_TOKEN` and `RE6ST_TOKEN`): the panel's "Add Compute Node Token" on the project, and a shared instance of the re6st registry (`re6st_release`) in its project (`re6st_project`, "Re6st Registries"), whose `token` connection parameter appears after 10+ minutes. The re6st one is requested under a fixed name, so asking again gives the same token.
+`hox create-node`, `hox re6st-token`
+- What a new node's registration needs (node-deployer's `SLAPOS_NODE` and `RE6ST_TOKEN`).
+- `create-node`: the panel's "Add Compute Node" on the project (`Project_addSlapOSComputeNode`), which creates the node and answers with its reference, certificate and key, printed as JSON. Not "Add Compute Node Token": its script reads `configuration_slapos_master_api` from the web site it is called through, which only panel.rapid.space has, and panel.rapid.space doesn't take our client certificate (401); the old `slapos token` API answers 410. The certificate is only given at creation, so it refuses if the node exists.
+- `re6st-token`: a shared instance of the re6st registry (`re6st_release`) in its project (`re6st_project`, "Re6st Registries", via the slap request's `project_reference`), whose `token` connection parameter appears after 10+ minutes. Requested under a fixed name, so asking again gives the same token.
 
 `hox api get RELATIVE_URL [--view VIEW]`, `hox api search QUERY [--select FIELD…]` (read-only, for debugging)
 - Raw access to the master's API (what our ad-hoc scripts did), printing JSON.
 
 ### 1.4 Non-goals
 
-- Setting up the node itself: node-deployer does it (`create-vm.sh` for the VM, `deploy.py` for SlapOS, `bootstrap.sh` for the whole sequence, which calls `hox token` and `hox deploy`).
+- Setting up the node itself: node-deployer does it (`create-vm.sh` for the VM, `deploy.py` for SlapOS, `bootstrap.sh` for the whole sequence, which calls `hox re6st-token`, `hox create-node` and `hox deploy`).
 - Several nodes, several projects, or anything about billing.
 - Replacing the `slapos` client for other users; we only cover our loop.
 - Editing or committing in the software repos (`hox` reads git state, never writes it). Bumping the app's pinned `revision` is open (see 4).
@@ -134,7 +136,7 @@ reference = "PROJ-20261026.009-F09D5B"
 [node]
 title = "hox-node"                         # its reference is looked up on the master
 ssh = ["ssh", "-F", "node-deployer/ssh_config", "hox-node"]   # relative paths resolve against hox.toml's directory
-re6st_project = "PROJ-112"                 # `hox token re6st`
+re6st_project = "PROJ-112"                 # `hox re6st-token`
 re6st_release = "https://lab.nexedi.com/nexedi/slapos/-/raw/1.0.404/software/re6stnet/software.cfg"
 
 [software.mynij-proxy]

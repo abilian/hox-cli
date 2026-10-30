@@ -25,7 +25,8 @@ Without installing: `uv run --project hox-cli hox status`.
 - `hox request [SOFTWARE] [--name NAME] [--pinned COMMIT] [--replace] [--yes]`: request the instance; re-requesting re-sends the original request. `--replace` destroys an instance on another URL and requests the next name.
 - `hox destroy NAME [--yes]`: destroy an instance.
 - `hox deploy [SOFTWARE]`: from nothing on the master to an instance that passes its checks: `setup`, `request`, then waits for the allocation, the node's build (hours for SBE on a cold cache) and the checks (frontends take a while). Run it again after a failure.
-- `hox token {compute-node,re6st}`: print a token for registering a new node (`node-deployer/bootstrap.sh` uses them). Only the token goes to stdout.
+- `hox create-node`: create the compute node (`[node] title`) on the master, print its reference, certificate and key as JSON, for `node-deployer/deploy.py`. Refuses if it exists: the certificate is only given at creation.
+- `hox re6st-token`: print the node's re6st token (the same one each time; 10+ minutes the first time). Only the token goes to stdout.
 - `hox setup [SOFTWARE]`: the one-time panel work for the branch URL: node allocation scope open, Software Product, software type, release, Allocation Supply on our node with the cell ticked, validated; then supplies the URL. Skips what exists.
 - `hox release COMMIT [--software NAME]`: the same for a pushed commit's pinned URL (full SHA). Doesn't move the instance.
 - `hox api get RELATIVE_URL [--view VIEW]`, `hox api search QUERY [--select FIELD …] [--limit N]`: raw read-only access to the master's API.

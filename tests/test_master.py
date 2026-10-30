@@ -315,7 +315,7 @@ def test_find_node():
     )
 
 
-@pytest.mark.parametrize("rows, found", [([], "none"), ([{}, {}], "2 of them")])
+@pytest.mark.parametrize("rows, found", [([], "none"), ([{"reference": "C1", "relative_url": "c/1"}] * 2, "2 of them")])
 def test_find_node_needs_exactly_one(rows, found):
     with pytest.raises(MasterError, match=f"compute node 'hox-node' in P: {found}"):
         find_node(Nodes(rows), "P", "hox-node")
