@@ -9,6 +9,10 @@ from pathlib import Path
 from packaging.markers import Marker
 
 
+# buildout's own: their versions are SlapOS's (stack/slapos.cfg), whatever the app wants.
+BUILDOUT_TOOLS = frozenset({"pip", "setuptools", "wheel", "zc-buildout"})
+
+
 class LockError(Exception):
     pass
 
@@ -76,7 +80,7 @@ def runtime_pins(lock: dict, python: str) -> list[Pin]:
                 continue
             q = package(dep)
             todo += [(q, "")] + [(q, e) for e in dep.get("extra", [])]
-        if p is not root and not extra:
+        if p is not root and not extra and p["name"] not in BUILDOUT_TOOLS:
             wheels = [w["url"].rsplit("/", 1)[1] for w in p.get("wheels", [])]
             pins[p["name"]] = Pin(p["name"], p["version"], "sdist" in p,
                                   any(w.endswith("-none-any.whl") for w in wheels))

@@ -18,6 +18,7 @@ def package(name, version="1.0", deps=(), sdist=True, wheels=("pure",), **extra)
 LOCK = {"package": [
     package("app", source={"editable": "."}, deps=[
         {"name": "flask"},
+        {"name": "setuptools"},
         {"name": "psycopg", "extra": ["binary"]},
         {"name": "pywin32", "marker": "sys_platform == 'win32'"},
         {"name": "typing-extensions", "marker": "python_full_version < '3.13'"},
@@ -30,6 +31,7 @@ LOCK = {"package": [
         "binary": [{"name": "psycopg-binary", "marker": "implementation_name != 'pypy'"}]}}),
     package("psycopg-binary", sdist=False, wheels=("binary",)),
     package("pywin32"),
+    package("setuptools"),
     package("typing-extensions"),
     package("numpy", "2.0", wheels=("binary",)),
     package("numpy", "2.3", wheels=("binary",)),
