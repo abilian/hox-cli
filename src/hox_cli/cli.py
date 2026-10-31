@@ -12,6 +12,7 @@ from cyclopts import App, Parameter
 from . import config as config_module
 from . import deploy as deploy_module
 from . import dev, panel
+from . import report as report_module
 from . import status as status_module
 from .config import Config, ConfigError, Software
 from .dev import DevError
@@ -72,6 +73,25 @@ def search(query: str, *, select: tuple[str, ...] = ("title", "relative_url"), l
 
 
 @app.command
+def build_report(software: str | None = None):
+    """How long the software's builds took on the node, and the disk they use, as Markdown.
+
+    From the node's software logs (14 days are kept): each build run of each
+    of its release URLs, the longest parts, then the release and shared part
+    sizes.
+
+    Parameters
+    ----------
+    software
+        A [software.<name>] of hox.toml; optional when there is only one.
+    """
+    config = _config()
+    sw = config.software_named(software)
+    runs, usage = report_module.gather(Node(config.node.ssh))
+    print(report_module.markdown(config, sw, runs, usage))
+
+
+@app.command
 def status(software: str | None = None, *, json_: Annotated[bool, Parameter(name="--json")] = False):
     """Instance, frontends, builds on the node, failing promises, what GitHub serves.
 
@@ -90,17 +110,16 @@ def status(software: str | None = None, *, json_: Annotated[bool, Parameter(name
     if json_:
         _print_json(dataclasses.asdict(report))
     else:
-        print(format_report(report, sw.branch_url))
+        print(format_report(report, config))
 
 
-def format_report(r: status_module.Report, branch_url: str) -> str:
+def format_report(r: status_module.Report, config: Config) -> str:
     out = []
     i = r.instance
     if i is None:
         out.append("instance       none (`hox request` to create it)")
     else:
-        url = "branch URL" if i.url == branch_url else i.url
-        out.append(f"instance       {i.title}: {i.state}, {url}, type {i.software_type}")
+        out.append(f"instance       {i.title}: {i.state}, {config.url_name(i.url)}, type {i.software_type}")
         out.append(f"partition      {i.partition or 'not allocated'}")
         out += [f"diagnosis      {d}" for d in r.diagnosis]
         if i.news:
@@ -111,9 +130,8 @@ def format_report(r: status_module.Report, branch_url: str) -> str:
             out.append(f"frontend       {f.title}: {'allocated' if f.allocated else 'not allocated'}")
     states = {s.url: s for s in (r.node.software if r.node else [])}
     for inst in r.installations:
-        name = "branch URL" if inst.url == branch_url else inst.url
         node_state = states.get(inst.url)
-        line = f"software       {name}: master {inst.state}"
+        line = f"software       {config.url_name(inst.url)}: master {inst.state}"
         if node_state:
             line += f", node {node_state.state}"
             if node_state.last_error:

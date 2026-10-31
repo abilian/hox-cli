@@ -19,6 +19,7 @@ Without installing: `uv run --project hox-cli hox status`.
 
 - `hox status [SOFTWARE] [--json]`: instance, partition (or why it isn't allocated), connection parameters, frontends, builds on the node, failing promises, whether GitHub serves the pushed commit.
 - `hox rebuild [SOFTWARE] [--software-only] [--no-wait]`: the dev loop. Refuses an unpushed branch, waits for raw.githubusercontent.com to serve the pushed files, rebuilds the branch URL in place on the node, redeploys, runs the checks.
+- `hox build-report [SOFTWARE]`: Markdown report of the software's builds on the node, from its software logs (14 days kept): each run of each release URL (start, end, duration, result), the longest parts, release and shared part sizes, disk used.
 - `hox check [SOFTWARE]`: the checks of hox.toml, with curl on the node. Exit 1 if one fails.
 - `hox logs {software,instance,app} [--software NAME] [-f] [-n N]`: tail slapgrid's logs or the instance's service logs.
 - `hox supply [SOFTWARE] [--pinned COMMIT] [--remove]`: supply (or remove) the branch or a pinned URL on our node.

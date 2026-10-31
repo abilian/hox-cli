@@ -30,7 +30,7 @@ Every command prints what it does in one line per step and fails with a non-zero
 `hox status [SOFTWARE]` (read-only)
 - Instance: requested state, partition, allocation, connection parameters (`url`, `backend-url`, …), and the master's news text for it.
 - Shared frontends requested by the instance: allocated or not.
-- Software on the node: built (`.completed`), building, failed (last buildout error), for each supplied URL.
+- Software on the node: built (`.completed`), building, failed (last buildout error), for each URL supplied to the node, named after its hox.toml software ("mynij-proxy branch", "abilian-sbe @ 971d944c2").
 - Failing promises from the last `slapos node instance` run.
 - For the branch URL: the commit raw.githubusercontent.com currently serves vs. the local branch head.
 
@@ -39,6 +39,9 @@ Every command prints what it does in one line per step and fails with a non-zero
 - Waits until raw.githubusercontent.com serves every file of the software's directory as in the pushed commit (the node fetches `instance.cfg.in` & co. from there too; its cache keeps branch files up to 5 minutes), unless `--no-wait`. Files outside that directory (`stack/`, `component/`) are not checked.
 - Runs `slapos node software --force --only-sr <branch URL>` on the node, then `slapos node instance --force`, streaming the relevant lines (`Installing`/`Uninstalling`, errors, end of run; not buildout's `Updating x.` for every unchanged part). When the node's cron run holds slapgrid's lock (exit 10), retries every 15 s for up to 15 minutes. Exit 2 of the instance run (promises fail) is reported, not fatal.
 - Ends with `hox check`; its exit code is the checks' (1 if one fails).
+
+`hox build-report [SOFTWARE]` (read-only)
+- For reports: Markdown of the software's build runs on the node, read from its software logs (rotated ones too, 14 days kept): start, end, duration and result of each run ("stopped" for a run killed without a result), the longest parts (from buildout's "Installing x." lines, each lasting until the next), the release directory and shared part sizes, disk used, CPUs and make jobs.
 
 `hox check [SOFTWARE]` (read-only)
 - The acceptance checks, from the node (the backend is only reachable over re6st): backend `/ping` (TLS not verified), frontend `/ping` when `url` is published, and the CORS header on `/proxy` with an `Origin:` header. Checks are declared per software in the config (method, path, headers, expected status/header), so SBE can declare its own.
@@ -113,6 +116,7 @@ hox-cli/
     status.py     # gathering and diagnosing for `hox status`
     dev.py        # the dev loop: pushed?, GitHub freshness, checks
     panel.py      # `setup` and `release`: what we did in the panel's forms
+    report.py     # `build-report`: build times and disk use from the node's logs
   tests/
     fixtures/     # API replies and node logs recorded on 2026-10-29 (passwords redacted)
 ```

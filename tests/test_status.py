@@ -93,8 +93,8 @@ def test_format_report(config):
         diagnosis=["d"],
         node=NodeFacts([SoftwareState(BRANCH_URL, "building", "Error: x")], ["slappart0[default]: p"]),
     )
-    text = format_report(report, BRANCH_URL)
-    assert "instance       mynij-proxy-3: start_requested, branch URL, type default" in text
+    text = format_report(report, config)
+    assert "instance       mynij-proxy-3: start_requested, mynij-proxy branch, type default" in text
     assert "partition      not allocated" in text
     assert "frontend       Mynij Proxy Frontend: not allocated" in text
     assert "promise        slappart0[default]: p" in text

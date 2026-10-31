@@ -44,6 +44,9 @@ class Check:
     expect_header: dict[str, str] = field(default_factory=dict)
 
 
+RAW = "https://raw.githubusercontent.com"
+
+
 @dataclass(frozen=True)
 class Software:
     name: str
@@ -57,7 +60,7 @@ class Software:
     checks: tuple[Check, ...] = ()
 
     def raw_url(self, file: str, ref: str | None = None) -> str:
-        return f"https://raw.githubusercontent.com/{self.repo}/{ref or self.branch}/{file}"
+        return f"{RAW}/{self.repo}/{ref or self.branch}/{file}"
 
     def pinned_url(self, commit: str) -> str:
         return self.raw_url(self.path, commit)
@@ -65,6 +68,13 @@ class Software:
     @property
     def branch_url(self) -> str:
         return self.raw_url(self.path)
+
+    def ref_of(self, url: str) -> str | None:
+        """The branch or commit of one of this software's release URLs; None for another URL."""
+        prefix, suffix = f"{RAW}/{self.repo}/", f"/{self.path}"
+        if url.startswith(prefix) and url.endswith(suffix):
+            return url[len(prefix) : -len(suffix)]
+        return None
 
 
 @dataclass(frozen=True)
@@ -83,6 +93,13 @@ class Config:
         if name not in self.software:
             raise ConfigError(f"no software {name!r} in {FILENAME} (have: {', '.join(self.software)})")
         return self.software[name]
+
+    def url_name(self, url: str) -> str:
+        """A software release URL as hox.toml knows it ("sbe branch", "sbe @ 971d944c2"), else the URL."""
+        for sw in self.software.values():
+            if ref := sw.ref_of(url):
+                return f"{sw.name} branch" if ref == sw.branch else f"{sw.name} @ {ref[:9]}"
+        return url
 
 
 def find(start: Path) -> Path:

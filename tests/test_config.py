@@ -75,3 +75,12 @@ def test_only_ssh_file_options_are_paths(config_data):
     assert parse(config_data, ROOT).node.ssh == (
         "ssh", "-o", "UserKnownHostsFile=/dev/null", "-i", str(ROOT / "keys/k"), "root@10.73.0.3",
     )
+
+
+def test_url_name(config_data):
+    config = parse(config_data, ROOT)
+    assert config.url_name(BRANCH_URL) == "mynij-proxy branch"
+    pinned = config.software_named(None).pinned_url("971d944c20680f37b1e5954e336294784f75b286")
+    assert config.url_name(pinned) == "mynij-proxy @ 971d944c2"
+    other = "https://lab.nexedi.com/nexedi/slapos/-/raw/1.0.404/software/re6stnet/software.cfg"
+    assert config.url_name(other) == other
