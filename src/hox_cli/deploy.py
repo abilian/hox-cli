@@ -59,8 +59,9 @@ def wait_checks(api: Api, sw: Software, node: Node, out=print, sleep=time.sleep)
 
 def deploy(api: Api, sw: Software, url: str, node: Node, out=print, sleep=time.sleep) -> list[dev.CheckResult]:
     """After `hox setup` and `hox request`: allocated, built, deployed, checks passing."""
-    wait_allocated(api, sw, out, sleep)
+    partition = wait_allocated(api, sw, out, sleep)
     wait_built(node, url, out, sleep)
-    if node.slapgrid("instance --force", out) == SLAPGRID_PROMISE_FAIL:
+    # Only our partition: another one's failure (a release still building) isn't ours.
+    if node.slapgrid(f"instance --force --only-cp {partition}", out) == SLAPGRID_PROMISE_FAIL:
         out("some promises fail (see above); they may pass once the frontends are there")
     return wait_checks(api, sw, node, out, sleep)

@@ -207,9 +207,13 @@ def rebuild(software: str | None = None, *, software_only: bool = False, no_wait
     node.slapgrid(f"software --force --only-sr {sw.branch_url}")
     if software_only:
         return 0
-    if node.slapgrid("instance --force") == SLAPGRID_PROMISE_FAIL:
-        print("some promises fail (see above)")
     inst = _instance_or_fail(_api(config), sw)
+    if inst.partition is None:
+        raise DevError(f"{sw.instance} is not allocated yet: `hox status` says why")
+    # Only our partition: another one's failure (a release still building) isn't ours.
+    if node.slapgrid(f"instance --force --only-cp {inst.partition}") == SLAPGRID_PROMISE_FAIL:
+        print("some promises fail (see above)")
+    inst = _instance_or_fail(_api(config), sw)  # connection parameters, as published by this run
     return _report_checks(dev.run_checks(sw.checks, inst.connection, node))
 
 

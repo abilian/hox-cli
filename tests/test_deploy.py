@@ -64,3 +64,18 @@ def test_wait_checks_until_the_frontend_is_published(sw, monkeypatch):
     [result] = deploy.wait_checks(None, sw, Node(), out.append, sleep=lambda s: None)
     assert result.ok
     assert out == ["waiting for: frontend: url is not published yet"]
+
+
+def test_deploy_runs_only_our_partition(sw, monkeypatch):
+    monkeypatch.setattr(deploy, "wait_allocated", lambda api, sw, out, sleep: "slappart8")
+    monkeypatch.setattr(deploy, "wait_built", lambda node, url, out, sleep: None)
+    monkeypatch.setattr(deploy, "wait_checks", lambda api, sw, node, out, sleep: [])
+
+    class Node:
+        def slapgrid(self, args, out):
+            self.args = args
+            return 0
+
+    node = Node()
+    deploy.deploy(None, sw, BRANCH_URL, node, out=lambda _: None)
+    assert node.args == "instance --force --only-cp slappart8"
