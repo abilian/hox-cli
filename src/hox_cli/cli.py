@@ -11,11 +11,12 @@ from cyclopts import App, Parameter
 
 from . import config as config_module
 from . import deploy as deploy_module
-from . import dev, panel
+from . import dev, lock, panel
 from . import report as report_module
 from . import status as status_module
 from .config import Config, ConfigError, Software
 from .dev import DevError
+from .lock import LockError
 from .master import Api, ComputeNode, MasterError, Request, Slap, find_node, next_name, stored_request
 from .node import INSTANCE_LOG, SLAPGRID_PROMISE_FAIL, SOFTWARE_LOG, Node, NodeError
 
@@ -70,6 +71,24 @@ def search(query: str, *, select: tuple[str, ...] = ("title", "relative_url"), l
         Maximum number of rows.
     """
     _print_json(_api(_config()).search(query, list(select), limit))
+
+
+@app.command
+def versions(lock_file: Path = Path("uv.lock"), *, python: str = "3.12"):
+    """Print a buildout [versions] section from a project's uv.lock.
+
+    The root project's run-time dependencies (no dev groups), pinned as uv
+    resolved them, with the packages buildout must build from source, or can't
+    install, listed in comments. Needs no hox.toml.
+
+    Parameters
+    ----------
+    lock_file
+        The project's uv.lock.
+    python
+        The release's Python, for the dependencies' markers.
+    """
+    print(lock.versions_cfg(lock_file, python), end="")
 
 
 @app.command
@@ -456,7 +475,7 @@ def main(
     _config_path = config
     try:
         code = app(tokens)
-    except (ConfigError, DevError, MasterError, NodeError) as e:
+    except (ConfigError, DevError, LockError, MasterError, NodeError) as e:
         if debug:
             raise
         print(f"hox: {e}", file=sys.stderr)
