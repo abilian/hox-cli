@@ -30,6 +30,7 @@ def test_parse(config_data):
         (lambda d: d.update(extra={}), "unknown sections: extra"),
         (lambda d: d["software"].clear(), "at least one is required"),
         (lambda d: d["software"]["mynij-proxy"]["checks"][0].pop("url"), r"checks\[0\]\] missing keys: url"),
+        (lambda d: d["software"]["mynij-proxy"].update(parameters={"n": 1}), r"parameters\] values must be strings"),
     ],
 )
 def test_parse_errors(config_data, change, message):
@@ -64,7 +65,7 @@ def test_find_none(tmp_path):
 def test_example_config_is_valid():
     example = Path(__file__).parent.parent / "hox.example.toml"
     config = parse(tomllib.loads(example.read_text()), ROOT)
-    assert list(config.software) == ["mynij-proxy", "abilian-sbe"]
+    assert list(config.software) == ["mynij-proxy", "abilian-sbe", "aipress24"]
     sw = config.software_named("mynij-proxy")
     assert sw.checkout == Path("/work/hox/slapos_abilian_edge")
     assert [c.name for c in sw.checks] == ["backend ping", "frontend ping", "CORS"]

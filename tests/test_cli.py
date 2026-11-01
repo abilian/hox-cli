@@ -57,6 +57,18 @@ def test_existing_instance_gets_its_original_request_again(master):
     assert slap.requests == [existing(BRANCH_URL)]  # parameters and filter included
 
 
+def test_parameters_in_hox_toml_replace_the_instances(master, config_data):
+    instances, slap = master
+    instances["mynij-proxy-3"] = existing(BRANCH_URL)
+    config = cli._config()
+    sw = dataclasses.replace(config.software["mynij-proxy"], parameters={"q": "2"})
+    config.software["mynij-proxy"] = sw
+    cli.request()
+    [req] = slap.requests
+    assert req.parameters == {"q": "2"}
+    assert req.filter == existing(BRANCH_URL).filter
+
+
 def test_url_change_is_refused_without_replace(master):
     instances, slap = master
     instances["mynij-proxy-3"] = existing(BRANCH_URL)

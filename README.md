@@ -24,7 +24,7 @@ Without installing: `uv run --project hox-cli hox status`.
 - `hox check [SOFTWARE]`: the checks of hox.toml, with curl on the node. Exit 1 if one fails.
 - `hox logs {software,instance,app} [--software NAME] [-f] [-n N]`: tail slapgrid's logs or the instance's service logs.
 - `hox supply [SOFTWARE] [--pinned COMMIT] [--remove]`: supply (or remove) the branch or a pinned URL on our node.
-- `hox request [SOFTWARE] [--name NAME] [--pinned COMMIT] [--replace] [--yes]`: request the instance; re-requesting re-sends the original request. `--replace` destroys an instance on another URL and requests the next name.
+- `hox request [SOFTWARE] [--name NAME] [--pinned COMMIT] [--replace] [--yes]`: request the instance; re-requesting re-sends the original request, with the parameters of `[software.<name>.parameters]` in hox.toml if it has that table. `--replace` destroys an instance on another URL and requests the next name.
 - `hox destroy NAME [--yes]`: destroy an instance.
 - `hox deploy [SOFTWARE]`: from nothing on the master to an instance that passes its checks: `setup`, `request`, then waits for the allocation, the node's build (hours for SBE on a cold cache) and the checks (frontends take a while). Run it again after a failure.
 - `hox node-certificate`: print the compute node's (`[node] title`) reference, certificate and key as JSON, for `node-deployer/deploy.py`. Creates the node if needed; otherwise revokes its certificate for a new one, which cuts off a node still configured with the old one.

@@ -338,6 +338,8 @@ def request(
         while stored_request(api, name):
             name = next_name(name)
     req = existing or Request(url, name, sw.software_type, {"computer_guid": _node(config, api).reference})
+    if sw.parameters is not None:
+        req = dataclasses.replace(req, parameters=sw.parameters)
     ready = slap.request(dataclasses.replace(req, state="started"))
     print(f"{name}: {'requested' if ready else 'requested, the master is provisioning it'} ({url})")
     if name != sw.instance:

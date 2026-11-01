@@ -58,6 +58,8 @@ class Software:
     product: str
     instance: str
     checks: tuple[Check, ...] = ()
+    # The instance's parameters, sent with every request; None keeps those it has.
+    parameters: dict[str, str] | None = None
 
     def raw_url(self, file: str, ref: str | None = None) -> str:
         return f"{RAW}/{self.repo}/{ref or self.branch}/{file}"
@@ -141,6 +143,8 @@ def parse(data: dict, root: Path) -> Config:
         checks = tuple(
             _build(Check, c, f"{ctx}.checks[{i}]") for i, c in enumerate(table.pop("checks", []))
         )
+        if not all(isinstance(v, str) for v in table.get("parameters", {}).values()):
+            raise ConfigError(f"[{ctx}.parameters] values must be strings")
         sw = _build(Software, {"name": name, **table, "checks": checks}, ctx)
         software[name] = dataclasses.replace(sw, checkout=resolve(sw.checkout))
     if not software:

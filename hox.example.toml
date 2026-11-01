@@ -73,3 +73,33 @@ url = "{backend-url}/"
 [[software.abilian-sbe.checks]]
 name = "frontend"
 url = "{url}/"
+
+[software.aipress24]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos_abilian_edge"
+branch = "aipress24"
+path = "software/aipress24/software.cfg"
+software_type = "default"
+product = "aipress24"
+instance = "aipress24-1"
+
+# The instance's parameters, sent with every `hox request` (and so `hox deploy`):
+# this table replaces those the instance has; without it, they stay as they are.
+# aipress24's profile exports each one to the app's processes, under its name,
+# as `hop3 config set` does (see scripts/hop3-config.example.sh in the app).
+# The master stores them in clear, and the project's members see them in the panel.
+# [software.aipress24.parameters]
+# ENV_FOR_DYNACONF = "production"
+# FLASK_S3_ENDPOINT_URL = "https://s3.fr-par.scw.cloud"
+# FLASK_S3_ACCESS_KEY_ID = "…"
+# FLASK_S3_SECRET_ACCESS_KEY = "…"
+
+[[software.aipress24.checks]]
+name = "backend health"
+url = "{backend-url}/system/health"
+expect_status = 200
+
+[[software.aipress24.checks]]
+name = "frontend health"
+url = "{url}/system/health"
+expect_status = 200
