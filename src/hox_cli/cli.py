@@ -115,7 +115,7 @@ def port(recipe: Path, slapos: Path, *, python: str = "3.13"):
         raise PortError(f"{slapos}: no stack/hop3/ (branch hop3-experiment?)")
     release = port_module.port(recipe, python)
     out = slapos / "software" / release.name
-    port_module.write(release, recipe, out)
+    port_module.write(release, out)
     print(f"{out}: software.cfg, versions.cfg, hop3/ ({len(release.files)} files)")
     for note in release.notes:
         print(f"  {note}")

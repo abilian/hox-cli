@@ -1,6 +1,6 @@
 import pytest
 
-from hox_cli.port import PortError, port, write
+from hox_cli.port import PortError, port, software_cfg, versions_cfg, write
 
 HOP3_TOML = """
 [metadata]
@@ -83,8 +83,11 @@ def recipe(tmp_path):
 def test_port(recipe):
     release = port(recipe, "3.13", pypi)
     assert release.name == "cal"
-    assert release.files == ["hop3.toml", "requirements.txt", "scripts/download.sh"]
-    cfg = release.software_cfg
+    assert list(release.files) == ["hop3.toml", "requirements.txt", "scripts/download.sh"]
+    assert release.processes == {"release": ["bash scripts/setup.sh", "echo ready"],
+                                 "web": ["python -m cal --port $PORT"], "mailer": ["cal-mailer"]}
+    assert release.volumes == ["data var/data"] and release.database
+    cfg = software_cfg(release)
     assert "  ../../component/postgresql/buildout.cfg\n  ../../stack/hop3/buildout.cfg\n" in cfg
     assert "<= python3.13" in cfg
     assert "  scripts/download.sh " in cfg
@@ -108,7 +111,7 @@ def test_port(recipe):
         "[[addons]] redis: not supported",
         "[waf]: not mapped",
     ]
-    versions = release.versions_cfg
+    versions = versions_cfg(release)
     assert "bcrypt = 5.0.0:whl" in versions and "cal    = 1.0:whl" in versions
     assert "oldlib = 0.1\n" in versions and "winlib" not in versions
 
@@ -116,7 +119,7 @@ def test_port(recipe):
 def test_write(recipe, tmp_path):
     out = tmp_path / "software" / "cal"
     (out / "hop3" / "stale").mkdir(parents=True)
-    write(port(recipe, "3.13", pypi), recipe, out)
+    write(port(recipe, "3.13", pypi), out)
     assert sorted(str(p.relative_to(out)) for p in out.rglob("*") if p.is_file()) == [
         "hop3/hop3.toml", "hop3/requirements.txt", "hop3/scripts/download.sh", "software.cfg", "versions.cfg"]
 
@@ -125,6 +128,7 @@ def test_write(recipe, tmp_path):
     ('toolchain = "python"', 'toolchain = "node"', "toolchain 'node'"),
     ('build = "pip install', 'build = "make" #', "only 'pip install -r requirements.txt'"),
     ('start = "python -m cal --port $PORT"', 'start = "cal --port ${PORT}x"', "commands must be one line"),
+    ('before-build = "bash', 'before-build = "X=${HOME} bash', "commands must be one line"),
 ])
 def test_port_refuses(recipe, old, new, error):
     toml = recipe / "hop3.toml"
@@ -136,4 +140,10 @@ def test_port_refuses(recipe, old, new, error):
 def test_port_needs_pins(recipe):
     (recipe / "requirements.txt").write_text("cal>=1.0\n")
     with pytest.raises(PortError, match="isn't pinned"):
+        port(recipe, "3.13", pypi)
+
+
+def test_port_needs_requirements(recipe):
+    (recipe / "requirements.txt").unlink()
+    with pytest.raises(PortError, match="no requirements.txt"):
         port(recipe, "3.13", pypi)

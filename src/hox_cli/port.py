@@ -1,5 +1,8 @@
 """From a Hop3 recipe (a catalog app's hop3.toml and its files) to a SlapOS
-software release on the hop3 stack of slapos_abilian_edge (stack/hop3/)."""
+software release on the hop3 stack of slapos_abilian_edge (stack/hop3/).
+
+port() maps the recipe to a Release, a section of hop3.toml at a time;
+software_cfg(), versions_cfg() and write() turn the Release into files."""
 
 import hashlib
 import re
@@ -9,6 +12,7 @@ import tomllib
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from packaging.requirements import Requirement
 
@@ -23,23 +27,36 @@ class PortError(Exception):
 OVERLAY = re.compile(r"catalog\.toml|readme(-\w+)?\.md|icon\.\w+|check\.py|screenshots/.*")
 
 # What the hop3 stack does without a word from the recipe, or what doesn't apply
-# on SlapOS; anything else the converter doesn't map is reported.
+# on SlapOS; any other section without a mapper (SECTIONS) is reported.
 IGNORED = {"metadata", "test", "port", "domains", "deploy", "backup", "limits", "contexts"}
 
 PIP_INSTALL = "pip install -r requirements.txt"
 
+# Fetches a package's release files from PyPI: name, version -> file names.
+PyPI = Callable[[str, str], list[str]]
+
 
 @dataclass
 class Release:
+    """What the release's software.cfg and versions.cfg say, before they are written."""
+
     name: str
-    software_cfg: str
-    versions_cfg: str
-    files: list[str]  # the recipe's, relative to its directory
+    title: str
+    version: str
+    python: str
+    recipe: Path  # the recipe's directory
+    files: dict[str, str]  # the recipe's files, relative to it: their md5
+    commands: list[str] = field(default_factory=list)  # run in the build
+    pins: list[Pin] = field(default_factory=list)
+    eggs: list[str] = field(default_factory=list)
+    # What Hop3 gives every app, then what the recipe asks for.
+    environment: list[str] = field(default_factory=lambda: ["HOST_NAME=$DOMAIN", "HOP3_PUBLIC_URL=$URL"])
+    secrets: list[str] = field(default_factory=list)
+    volumes: list[str] = field(default_factory=list)  # "name target"
+    processes: dict[str, list[str]] = field(default_factory=dict)  # name: its commands
+    health: str | None = None
+    database: bool = False
     notes: list[str] = field(default_factory=list)  # what wasn't mapped, or needs a look
-
-
-# Fetches a package's release files from PyPI: name, version -> file names.
-PyPI = Callable[[str, str], list[str]]
 
 
 def pypi_files(name: str, version: str) -> list[str]:
@@ -55,135 +72,172 @@ def pypi_files(name: str, version: str) -> list[str]:
 def port(recipe: Path, python: str, pypi: PyPI = pypi_files) -> Release:
     """The release for the recipe in `recipe` (the directory of its hop3.toml)."""
     spec = tomllib.loads((recipe / "hop3.toml").read_text())
-    name = spec["metadata"]["id"]
-    build, run = spec.get("build", {}), spec.get("run", {})
-    notes: list[str] = []
+    spec.setdefault("build", {})  # its mapper refuses what isn't built with pip
+    meta = spec["metadata"]
+    files = sorted(f for f in (str(p.relative_to(recipe)) for p in recipe.rglob("*") if p.is_file())
+                   if not OVERLAY.fullmatch(f))
+    release = Release(meta["id"], meta.get("title", meta["id"]), meta.get("version", ""), python, recipe,
+                      {f: hashlib.md5((recipe / f).read_bytes()).hexdigest() for f in files})
+    for name, mapper in SECTIONS.items():
+        if name in spec:
+            mapper(release, spec[name])
+    release.notes += [f"[{s}]: not mapped" for s in spec if s not in SECTIONS and s not in IGNORED]
+    release.pins, release.eggs = _requirements(recipe / "requirements.txt", python, pypi)
+    return release
+
+
+def _build(release: Release, build: dict) -> None:
     if build.get("builder", "local") != "local":
         raise PortError(f"builder {build['builder']!r}: only the local builder is supported")
     if build.get("toolchain") != "python":
         raise PortError(f"toolchain {build.get('toolchain')!r}: only python is supported so far")
-
-    commands = _commands(build.get("before-build"))
-    install = _commands(build.get("build"))
-    requirements = recipe / "requirements.txt"
-    if install == [PIP_INSTALL] or (not install and requirements.exists()):
-        install = []
-    elif install:
+    if (install := _commands(build.get("build"))) not in ([], [PIP_INSTALL]):
         raise PortError(f"[build] build = {install}: only {PIP_INSTALL!r} is supported so far")
-    else:
+    if not (release.recipe / "requirements.txt").exists():
         raise PortError("no requirements.txt: apps installed from their source aren't supported so far")
-    commands += _commands(build.get("after-build"))
-    pins, eggs = _requirements(requirements, python, pypi)
+    release.commands = _commands(build.get("before-build")) + _commands(build.get("after-build"))
+    _packages(release, "build", build)
 
-    environment = ["HOST_NAME=$DOMAIN", "HOP3_PUBLIC_URL=$URL"]
-    secrets = []
-    for key, value in spec.get("env", {}).items():
+
+def _env(release: Release, env: dict) -> None:
+    for key, value in env.items():
         if key == "computed":
-            environment += [f"{k}={_shell(_variables(v))}" for k, v in value.items()]
+            release.environment += [f"{k}={_shell(_variables(v))}" for k, v in value.items()]
         elif key.startswith("_"):
             continue
         elif isinstance(value, str):
-            environment.append(f"{key}={_shell(value)}")
+            release.environment.append(f"{key}={_shell(value)}")
         elif "generate" in value:
-            secrets.append(key)
-            notes.append(f"[env] {key}: generated as a 32-character password, not {value['generate']!r}")
+            release.secrets.append(key)
+            release.notes.append(f"[env] {key}: generated as a 32-character password, not {value['generate']!r}")
         elif value.get("key") in ("domain", "hostname") and "from" not in value:
-            environment.append(f"{key}=$DOMAIN")
+            release.environment.append(f"{key}=$DOMAIN")
         elif value.get("key") == "name" and "from" not in value:
-            environment.append(f"{key}={name}")
+            release.environment.append(f"{key}={release.name}")
         else:
-            notes.append(f"[env] {key} = {value}: not mapped")
-    processes = {}
-    release = _commands(run.get("before-run"))
-    if admin := spec.get("admin"):
-        secrets.append("HOP3_ADMIN_PASSWORD")
-        if "username" in admin:
-            environment.append(f"HOP3_ADMIN_USER={_shell(admin['username'])}")
-        if admin.get("email") == "operator":
-            notes.append("[admin] email: set HOP3_ADMIN_EMAIL as an instance parameter")
-        elif "email" in admin:
-            environment.append(f"HOP3_ADMIN_EMAIL={_shell(admin['email'])}")
-        release += _commands(admin.get("create"))
-    if release:
-        processes["release"] = " && ".join(release)
+            release.notes.append(f"[env] {key} = {value}: not mapped")
+
+
+def _run(release: Release, run: dict) -> None:
+    release.processes["release"] = _commands(run.get("before-run"))
     if "start" in run:
-        processes["web"] = " && ".join(_commands(run["start"]))
-    processes |= {k: " && ".join(_commands(v)) for k, v in run.get("workers", {}).items()}
-    for process, command in processes.items():
-        if "\n" in command or "${" in command:
-            raise PortError(f"{process}: {command!r}: commands must be one line, without ${{…}}")
-    if "probe" in spec:
-        notes.append("[probe]: not created, nothing on SlapOS signs in with it")
+        release.processes["web"] = _commands(run["start"])
+    release.processes |= {k: _commands(v) for k, v in run.get("workers", {}).items()}
+    _packages(release, "run", run)
 
-    volumes = []
-    for volume in spec.get("volumes", []):
-        if volume.get("type", "persist") == "persist":
-            volumes.append(f"{volume['name']} {volume['target']}")
-        # A scratch volume is reset by every deploy: the copy of the build is.
-    addons = [a["type"] for a in spec.get("addons", [])]
-    database = "postgres" in addons
-    notes += [f"[[addons]] {a}: not supported" for a in addons if a != "postgres"]
-    notes += [f"[{s}]: not mapped" for s in spec if s not in IGNORED | {
-        "build", "run", "env", "admin", "probe", "volumes", "addons", "healthcheck"}]
-    notes += [f"[{s}] packages = {spec[s]['packages']}: needs SlapOS components"
-              for s in ("build", "run") if spec.get(s, {}).get("packages")]
 
-    files = sorted(f for f in (str(p.relative_to(recipe)) for p in recipe.rglob("*") if p.is_file())
-                   if not OVERLAY.fullmatch(f))
-    version = spec["metadata"].get("version", "")
+def _admin(release: Release, admin: dict) -> None:
+    release.secrets.append("HOP3_ADMIN_PASSWORD")
+    if "username" in admin:
+        release.environment.append(f"HOP3_ADMIN_USER={_shell(admin['username'])}")
+    if admin.get("email") == "operator":
+        release.notes.append("[admin] email: set HOP3_ADMIN_EMAIL as an instance parameter")
+    elif "email" in admin:
+        release.environment.append(f"HOP3_ADMIN_EMAIL={_shell(admin['email'])}")
+    release.processes.setdefault("release", []).extend(_commands(admin.get("create")))
+
+
+def _probe(release: Release, probe: dict) -> None:
+    release.notes.append("[probe]: not created, nothing on SlapOS signs in with it")
+
+
+def _volumes(release: Release, volumes: list[dict]) -> None:
+    # A scratch volume is reset by every deploy, as the copy of the build is.
+    release.volumes = [f"{v['name']} {v['target']}" for v in volumes if v.get("type", "persist") == "persist"]
+
+
+def _addons(release: Release, addons: list[dict]) -> None:
+    for addon in addons:
+        if addon["type"] == "postgres":
+            release.database = True
+        else:
+            release.notes.append(f"[[addons]] {addon['type']}: not supported")
+
+
+def _healthcheck(release: Release, healthcheck: dict) -> None:
+    release.health = healthcheck.get("path")
+
+
+# The sections mapped, in this order: [admin] create runs after [run] before-run.
+SECTIONS: dict[str, Callable[[Release, Any], None]] = {
+    "build": _build,
+    "env": _env,
+    "run": _run,
+    "admin": _admin,
+    "probe": _probe,
+    "volumes": _volumes,
+    "addons": _addons,
+    "healthcheck": _healthcheck,
+}
+
+
+def software_cfg(release: Release) -> str:
+    processes = {k: " && ".join(v) for k, v in release.processes.items() if v}
     lines = [
-        f"# {spec['metadata'].get('title', name)} {version}, from its Hop3 recipe in hop3/,",
+        f"# {release.title} {release.version}, from its Hop3 recipe in hop3/,",
         "# by `hox port`: change the recipe and port it again rather than edit this file.",
         "[buildout]",
         "extends =",
-        *(["  ../../component/postgresql/buildout.cfg"] if database else []),
+        *(["  ../../component/postgresql/buildout.cfg"] if release.database else []),
         "  ../../stack/hop3/buildout.cfg",
         "  ./versions.cfg",
         "",
         "[python3]",
-        f"<= python{python}",
+        f"<= python{release.python}",
         "",
         "[hop3]",
         "base = ${:_profile_base_location_}/hop3",
         "files =",
-        *(f"  {f} {hashlib.md5((recipe / f).read_bytes()).hexdigest()}" for f in files),
+        *(f"  {f} {md5}" for f, md5 in release.files.items()),
         "commands =",
-        *(f"  {c}" for c in commands),
+        *(f"  {c}" for c in release.commands),
         "",
         "[python-app]",
-        f"name = {name}",
+        f"name = {release.name}",
         "eggs =",
-        *(f"  {e}" for e in eggs),
-        *([f"health = {spec['healthcheck']['path']}"] if "path" in spec.get("healthcheck", {}) else []),
-        *(["postgresql-bin = ${postgresql:location}/bin"] if database else []),
-        *([f"secrets = {' '.join(secrets)}"] if secrets else []),
+        *(f"  {e}" for e in release.eggs),
+        *([f"health = {release.health}"] if release.health else []),
+        *(["postgresql-bin = ${postgresql:location}/bin"] if release.database else []),
+        *([f"secrets = {' '.join(release.secrets)}"] if release.secrets else []),
         "environment =",
-        *(f"  {e}" for e in environment),
-        *(["volumes =", *(f"  {v}" for v in volumes)] if volumes else []),
+        *(f"  {e}" for e in release.environment),
+        *(["volumes =", *(f"  {v}" for v in release.volumes)] if release.volumes else []),
         "",
         "[python-app-processes]",
         *(f"{k} = {v}" for k, v in processes.items()),
         "",
     ]
-    return Release(name, "\n".join(lines), render_versions(pins, "hop3/requirements.txt by `hox port`", python),
-                   files, notes)
+    return "\n".join(lines)
 
 
-def write(release: Release, recipe: Path, out: Path) -> None:
+def versions_cfg(release: Release) -> str:
+    return render_versions(release.pins, "hop3/requirements.txt by `hox port`", release.python)
+
+
+def write(release: Release, out: Path) -> None:
     """Write the release in `out` (software/<name>/), the recipe's files in out/hop3/."""
     if (out / "hop3").exists():
         shutil.rmtree(out / "hop3")
     for f in release.files:
         (out / "hop3" / f).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(recipe / f, out / "hop3" / f)
-    (out / "software.cfg").write_text(release.software_cfg)
-    (out / "versions.cfg").write_text(release.versions_cfg)
+        shutil.copyfile(release.recipe / f, out / "hop3" / f)
+    (out / "software.cfg").write_text(software_cfg(release))
+    (out / "versions.cfg").write_text(versions_cfg(release))
 
 
 def _commands(value: str | list[str] | None) -> list[str]:
-    if value is None:
-        return []
-    return [c.strip() for c in ([value] if isinstance(value, str) else value) if c.strip()]
+    """A command or a list of them. Each one line, without ${…}: buildout would
+    split the one and substitute the other (write $NAME)."""
+    commands = [c.strip() for c in ([] if value is None else [value] if isinstance(value, str) else value)]
+    for command in commands:
+        if "\n" in command or "${" in command:
+            raise PortError(f"{command!r}: commands must be one line, without ${{…}}")
+    return [c for c in commands if c]
+
+
+def _packages(release: Release, section: str, value: dict) -> None:
+    if value.get("packages"):
+        release.notes.append(f"[{section}] packages = {value['packages']}: needs SlapOS components")
 
 
 def _requirements(path: Path, python: str, pypi: PyPI) -> tuple[list[Pin], list[str]]:
