@@ -12,12 +12,14 @@ from cyclopts import App, Parameter
 from . import config as config_module
 from . import deploy as deploy_module
 from . import dev, lock, panel
+from . import port as port_module
 from . import report as report_module
 from . import status as status_module
 from .config import Config, ConfigError, Software
 from .dev import DevError
 from .lock import LockError
 from .master import Api, ComputeNode, MasterError, Request, Slap, find_node, next_name, stored_request
+from .port import PortError
 from .node import INSTANCE_LOG, SLAPGRID_PROMISE_FAIL, SOFTWARE_LOG, Node, NodeError
 
 app = App(name="hox", help="Drive our SlapOS work on Rapid.Space from the terminal.")
@@ -89,6 +91,34 @@ def versions(lock_file: Path = Path("uv.lock"), *, python: str = "3.12"):
         The release's Python, for the dependencies' markers.
     """
     print(lock.versions_cfg(lock_file, python), end="")
+
+
+@app.command
+def port(recipe: Path, slapos: Path, *, python: str = "3.13"):
+    """Write a SlapOS software release from a Hop3 recipe, on the hop3 stack.
+
+    The release goes to <slapos>/software/<app id>/: a software.cfg, a
+    versions.cfg from the recipe's requirements.txt (with PyPI's wheels), and
+    the recipe's files in hop3/. What couldn't be mapped is listed. Needs no
+    hox.toml.
+
+    Parameters
+    ----------
+    recipe
+        The recipe's directory, with its hop3.toml (a catalog app's directory).
+    slapos
+        A checkout of slapos_abilian_edge with stack/hop3/.
+    python
+        The release's Python.
+    """
+    if not (slapos / "stack" / "hop3").is_dir():
+        raise PortError(f"{slapos}: no stack/hop3/ (branch hop3-experiment?)")
+    release = port_module.port(recipe, python)
+    out = slapos / "software" / release.name
+    port_module.write(release, recipe, out)
+    print(f"{out}: software.cfg, versions.cfg, hop3/ ({len(release.files)} files)")
+    for note in release.notes:
+        print(f"  {note}")
 
 
 @app.command
@@ -477,7 +507,7 @@ def main(
     _config_path = config
     try:
         code = app(tokens)
-    except (ConfigError, DevError, LockError, MasterError, NodeError) as e:
+    except (ConfigError, DevError, LockError, MasterError, NodeError, PortError) as e:
         if debug:
             raise
         print(f"hox: {e}", file=sys.stderr)

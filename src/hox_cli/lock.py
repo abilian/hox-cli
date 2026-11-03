@@ -108,11 +108,14 @@ def runtime_pins(lock: dict, python: str) -> list[Pin]:
 
 def versions_cfg(path: Path, python: str) -> str:
     """A [versions] section for buildout, with what needs attention as comments."""
-    pins = runtime_pins(tomllib.loads(path.read_text()), python)
+    return render_versions(runtime_pins(tomllib.loads(path.read_text()), python), f"{path.name} by `hox versions`", python)
+
+
+def render_versions(pins: list[Pin], source: str, python: str) -> str:
     binary = [p.name for p in pins if p.wheel == "binary"]
     compiled = [p.name for p in pins if not p.wheel and p.sdist]
     unbuildable = [p.name for p in pins if not p.wheel and not p.sdist]
-    lines = [f"# From {path.name} by `hox versions`, for CPython {python} on Linux x86_64.",
+    lines = [f"# From {source}, for CPython {python} on Linux x86_64.",
              "# Packages with a wheel for the node are installed from it (:whl)."]
     if binary:
         lines += ["# From binary (manylinux) wheels, with their C libraries bundled, not",
