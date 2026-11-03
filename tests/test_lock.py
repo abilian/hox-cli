@@ -1,6 +1,6 @@
 import pytest
 
-from hox_cli.lock import LockError, Pin, runtime_pins, versions_cfg
+from hox_cli.lock import LockError, Pin, render_versions, runtime_pins, versions_cfg
 
 TAGS = {"pure": "py3-none-any", "binary": "cp312-cp312-manylinux_2_17_x86_64",
         "py311": "cp311-cp311-manylinux_2_17_x86_64", "mac": "cp312-cp312-macosx_11_0_arm64"}
@@ -111,3 +111,11 @@ psycopg-c      = 3.3.6
     assert "SlapOS's: a security fix in one comes with a new release of the package.\n#   bcrypt\n" in cfg
     assert "libraries and build tools in the build:\n#   psycopg-c\n" in cfg
     assert "(another extra, or a SlapOS component):\n#   psycopg-binary\n" in cfg
+
+
+def test_stack_built_eggs_have_no_wheel_pin():
+    cfg = render_versions([Pin("PyYAML", "6.0.3", sdist=True, wheel="binary"),
+                           Pin("bcrypt", "4.3.0", sdist=True, wheel="binary")], "x", "3.13")
+    assert cfg.endswith("[versions]\nPyYAML = 6.0.3\nbcrypt = 4.3.0:whl\n")
+    assert "bundled, not\n# SlapOS's: a security fix in one comes with a new release of the package.\n#   bcrypt\n" in cfg
+    assert "(slapos.cookbook), from source, with its recipe:\n#   PyYAML\n" in cfg

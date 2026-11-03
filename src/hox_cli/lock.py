@@ -8,11 +8,15 @@ from pathlib import Path
 
 from packaging import tags
 from packaging.markers import Marker
-from packaging.utils import parse_wheel_filename
+from packaging.utils import canonicalize_name, parse_wheel_filename
 
 
 # buildout's own: their versions are SlapOS's (stack/slapos.cfg), whatever the app wants.
 BUILDOUT_TOOLS = frozenset({"pip", "setuptools", "wheel", "zc-buildout"})
+
+# Built by SlapOS's stack itself, from source, for slapos.cookbook (stack/slapos.cfg):
+# a :whl pin breaks that build.
+STACK_BUILT = frozenset({"cffi", "lxml", "pyyaml"})
 
 
 class LockError(Exception):
@@ -27,10 +31,14 @@ class Pin:
     wheel: str | None  # "pure", "binary" (manylinux, for the node), or none for the node
 
     @property
+    def stack_built(self) -> bool:
+        return canonicalize_name(self.name) in STACK_BUILT
+
+    @property
     def constraint(self) -> str:
         # A wheel installs without a build: buildout builds sdists with the build's
         # setuptools (74 on SlapOS 1.0), which many recent sdists are too new for.
-        return f"{self.version}:whl" if self.wheel else self.version
+        return f"{self.version}:whl" if self.wheel and not self.stack_built else self.version
 
 
 def node_tags(python: str) -> frozenset[tags.Tag]:
@@ -112,7 +120,8 @@ def versions_cfg(path: Path, python: str) -> str:
 
 
 def render_versions(pins: list[Pin], source: str, python: str) -> str:
-    binary = [p.name for p in pins if p.wheel == "binary"]
+    binary = [p.name for p in pins if p.wheel == "binary" and not p.stack_built]
+    stack = [p.name for p in pins if p.stack_built]
     compiled = [p.name for p in pins if not p.wheel and p.sdist]
     unbuildable = [p.name for p in pins if not p.wheel and not p.sdist]
     lines = [f"# From {source}, for CPython {python} on Linux x86_64.",
@@ -121,6 +130,9 @@ def render_versions(pins: list[Pin], source: str, python: str) -> str:
         lines += ["# From binary (manylinux) wheels, with their C libraries bundled, not",
                   "# SlapOS's: a security fix in one comes with a new release of the package.",
                   *_wrapped(binary)]
+    if stack:
+        lines += ["# Built by SlapOS's stack (slapos.cookbook), from source, with its recipe:",
+                  *_wrapped(stack)]
     if compiled:
         lines += ["# Built from their sdist (no wheel for the node): those with C or Rust",
                   "# code need their libraries and build tools in the build:", *_wrapped(compiled)]
