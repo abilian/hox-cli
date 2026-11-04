@@ -257,6 +257,15 @@ def test_port_go_component_from_go_mod(go_app, go_source, go_mod, component):
     assert f"tools = ${{golang{component}:location}}/bin:" in software_cfg(port(go_app, "3.13", _no_pypi, source=go_source))
 
 
+def test_port_go_app_with_a_node_frontend_has_both_on_its_path(go_app, go_source):
+    toml = go_app / "hop3.toml"
+    toml.write_text(toml.read_text().replace('build = "make forge"', 'build = ["npx pnpm --dir web build", "make forge"]'))
+    cfg = software_cfg(port(go_app, "3.13", _no_pypi, source=go_source))
+    assert cfg.count("tools = ") == 1
+    assert "tools = ${golang1.23:location}/bin:${nodejs:location}/bin:${:base-tools}\n" in cfg
+    assert "<= nodejs-" in cfg
+
+
 def test_port_refuses_a_go_mod_newer_than_the_components(go_app, go_source):
     (go_source / "go.mod").write_text("go 1.99\n")
     with pytest.raises(PortError, match="1.99"):

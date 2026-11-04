@@ -290,8 +290,7 @@ def software_cfg(release: Release) -> str:
         *(f"  {f} {md5}" for f, md5 in release.files.items()),
         "commands =",
         *(f"  {c}" for c in release.commands),
-        *([f"tools = ${{golang{release.go}:location}}/bin:${{:base-tools}}"] if release.go else []),
-        *(["tools = ${nodejs:location}/bin:${:base-tools}"] if release.node else []),
+        *([f"tools = {_tools(release)}"] if release.go or release.node else []),
         "",
         "[python-app]",
         f"name = {release.name}",
@@ -331,6 +330,13 @@ def write(release: Release, out: Path) -> None:
     (out / "software.cfg").write_text(software_cfg(release))
     if release.pins:
         (out / "versions.cfg").write_text(versions_cfg(release))
+
+
+def _tools(release: Release) -> str:
+    """What the build finds on PATH, before what the stack gives every release."""
+    tools = [f"${{golang{release.go}:location}}/bin"] if release.go else []
+    tools += ["${nodejs:location}/bin"] if release.node else []
+    return ":".join([*tools, "${:base-tools}"])
 
 
 def _go_component(go_mod: str) -> str:
