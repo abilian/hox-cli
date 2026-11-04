@@ -217,12 +217,14 @@ def _admin(release: Release, admin: dict) -> None:
         release.notes.append(f"[admin] email: admin@{release.name}.invalid, unless HOP3_ADMIN_EMAIL is an instance parameter")
     elif "email" in admin:
         release.environment.append(f"HOP3_ADMIN_EMAIL={_shell(admin['email'])}")
-    create = admin.get("create", "")
+    create = admin.get("create")
+    if not create:  # the app makes its admin from the HOP3_ADMIN_* variables
+        return
     if "\n" in create.strip() or "${" in create:  # in a script: buildout would split or substitute it
         release.generated[ADMIN_SCRIPT] = create
         release.files[ADMIN_SCRIPT] = hashlib.md5(create.encode()).hexdigest()
         create = f"bash {ADMIN_SCRIPT}"
-    release.processes.setdefault("release", []).extend(_commands(create))
+    release.processes["after-start"] = _commands(create)
 
 
 def _probe(release: Release, probe: dict) -> None:
@@ -246,8 +248,7 @@ def _healthcheck(release: Release, healthcheck: dict) -> None:
     release.health = healthcheck.get("path")
 
 
-# The sections mapped, in this order: [admin] create runs after [run] before-run,
-# and [env.computed] can read what [admin] sets.
+# The sections mapped, in this order: [env.computed] can read what [admin] sets.
 SECTIONS: dict[str, Callable[[Release, Any], None]] = {
     "build": _build,
     "run": _run,

@@ -279,7 +279,7 @@ def test_port_go_builds_with_slapos_go(go_app, go_source, tmp_path):
 
 def test_port_multi_line_admin_create_becomes_a_script(go_app, go_source, tmp_path):
     release = port(go_app, "3.13", _no_pypi, source=go_source)
-    assert release.processes["release"] == ["bash hop3-admin-create.sh"]
+    assert release.processes["after-start"] == ["bash hop3-admin-create.sh"]
     cfg = software_cfg(release)
     assert "${HOP3_ADMIN_USER" not in cfg  # buildout would substitute it
     assert "  hop3-admin-create.sh " in cfg  # fetched with the recipe's files
