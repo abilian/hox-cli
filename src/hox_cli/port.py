@@ -42,7 +42,7 @@ IGNORED = {"metadata", "test", "port", "domains", "deploy", "backup", "limits", 
 PIP_INSTALL = "pip install -r requirements.txt"
 
 # The build commands that need Node (SBE's version, already in the node's shared parts).
-NODE_COMMAND = re.compile(r"(npm|npx|node)\b")
+NODE_COMMAND = re.compile(r"(\w+=\S*\s+)*(npm|npx|node)\b")
 NODE_VERSION = "24.11.0"
 # SlapOS's Go components, oldest first: an app gets the first that its go.mod allows.
 GO_VERSIONS = ("1.23", "1.24", "1.26")

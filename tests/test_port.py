@@ -259,7 +259,7 @@ def test_port_go_component_from_go_mod(go_app, go_source, go_mod, component):
 
 def test_port_go_app_with_a_node_frontend_has_both_on_its_path(go_app, go_source):
     toml = go_app / "hop3.toml"
-    toml.write_text(toml.read_text().replace('build = "make forge"', 'build = ["npx pnpm --dir web build", "make forge"]'))
+    toml.write_text(toml.read_text().replace('build = "make forge"', 'build = ["NODE_OPTIONS=--max-old-space-size=3072 npx pnpm --dir web build", "make forge"]'))
     cfg = software_cfg(port(go_app, "3.13", _no_pypi, source=go_source))
     assert cfg.count("tools = ") == 1
     assert "tools = ${golang1.23:location}/bin:${nodejs:location}/bin:${:base-tools}\n" in cfg
