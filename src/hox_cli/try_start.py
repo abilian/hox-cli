@@ -28,7 +28,8 @@ from pathlib import Path
 BUILDS = Path("/srv/hox-dev")
 # ponytail: fixed ports, so one run at a time; no node has this partition.
 PARTITION = "slappart99"
-POSTGRES_PORT = "25099"
+# Its own loopback address and the stack's port: some apps can't be told another.
+POSTGRES_HOST = "127.0.0.99"
 FRONTEND = "try-start.invalid"
 REFERENCE = re.compile(r"(?<!\$)\$\{([^:}]*):([^}]*)\}")
 
@@ -112,9 +113,8 @@ class Run:
             (build / "instance.cfg").read_text(),
             {
                 ("buildout", "directory"): str(home),
-                ("slap-configuration", "ipv4-random"): "127.0.0.1",
+                ("slap-configuration", "ipv4-random"): POSTGRES_HOST,
                 ("slap-configuration", "ipv6-random"): "::1",
-                ("postgresql", "port"): POSTGRES_PORT,
                 ("request-frontend", "connection-secure_access"): f"https://{FRONTEND}",
                 ("request-frontend", "connection-domain"): FRONTEND,
                 ("release-key", "marker"): str(home / "var/run/release-try-start"),
@@ -155,16 +155,16 @@ class Run:
         def tool(program: str) -> str:
             return str(Path(get("bin")) / program)
 
-        pgdata, user, name = get("pgdata-directory"), get("superuser"), get("dbname")
+        pgdata, user, name, port = get("pgdata-directory"), get("superuser"), get("dbname"), get("port")
         password = self.home / "postgres-password"
         password.write_text(get("password"))
         subprocess.run([tool("initdb"), "-D", pgdata, "-U", user, "-A", "md5", f"--pwfile={password}", "-E", "UTF8"],
                        check=True, stdout=subprocess.DEVNULL)
-        options = f"-p {POSTGRES_PORT} -k {self.home} -c listen_addresses=127.0.0.1"
+        options = f"-p {port} -k {self.home} -c listen_addresses={POSTGRES_HOST}"
         self.postgres = [tool("pg_ctl"), "-D", pgdata, "-m", "fast", "stop"]
         subprocess.run([tool("pg_ctl"), "-D", pgdata, "-w", "-l", str(self.log("postgres")), "-o", options, "start"],
                        check=True, stdout=subprocess.DEVNULL)
-        subprocess.run([tool("createdb"), "-h", "127.0.0.1", "-p", POSTGRES_PORT, "-U", user, name], check=True,
+        subprocess.run([tool("createdb"), "-h", POSTGRES_HOST, "-p", port, "-U", user, name], check=True,
                        env={**os.environ, "PGPASSWORD": get("password")})
 
     def url(self) -> str:
