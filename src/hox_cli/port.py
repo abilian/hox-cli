@@ -8,6 +8,7 @@ import hashlib
 import re
 import shlex
 import shutil
+import subprocess
 import tomllib
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -15,8 +16,16 @@ from pathlib import Path
 from typing import Any
 
 from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
-from .lock import Pin, environment, node_tags, render_versions, wheel_kind
+from .lock import (
+    BUILDOUT_TOOLS,
+    Pin,
+    environment,
+    node_tags,
+    render_versions,
+    wheel_kind,
+)
 
 
 class PortError(Exception):
@@ -32,8 +41,18 @@ IGNORED = {"metadata", "test", "port", "domains", "deploy", "backup", "limits", 
 
 PIP_INSTALL = "pip install -r requirements.txt"
 
+# The build commands that need Node (SBE's version, already in the node's shared parts).
+NODE_COMMAND = re.compile(r"(npm|npx|node)\b")
+NODE_VERSION = "24.11.0"
+# Packages that buildout can't build by name alone, and the SlapOS component that
+# has what their build needs.
+COMPONENTS = {"misaka": "python-misaka"}
+
 # Fetches a package's release files from PyPI: name, version -> file names.
 PyPI = Callable[[str, str], list[str]]
+
+# Pins a project's dependencies for the node: its pyproject.toml, Python -> requirements.
+Resolve = Callable[[Path, str], str]
 
 
 @dataclass
@@ -47,6 +66,8 @@ class Release:
     recipe: Path  # the recipe's directory
     files: dict[str, str]  # the recipe's files, relative to it: their md5
     commands: list[str] = field(default_factory=list)  # run in the build
+    node: bool = False  # the commands need Node
+    egg: str | None = None  # the app's distribution, when installed from its source
     pins: list[Pin] = field(default_factory=list)
     eggs: list[str] = field(default_factory=list)
     # What Hop3 gives every app, then what the recipe asks for.
@@ -69,8 +90,21 @@ def pypi_files(name: str, version: str) -> list[str]:
     return [f["filename"] for f in response.json()["urls"]]
 
 
-def port(recipe: Path, python: str, pypi: PyPI = pypi_files) -> Release:
-    """The release for the recipe in `recipe` (the directory of its hop3.toml)."""
+def uv_compile(pyproject: Path, python: str) -> str:
+    done = subprocess.run(["uv", "pip", "compile", str(pyproject), "--python-version", python,
+                           "--python-platform", "x86_64-unknown-linux-gnu", "--no-header", "--no-annotate", "-q"],
+                          capture_output=True, text=True, check=False)
+    if done.returncode:
+        raise PortError(f"uv pip compile {pyproject}: {done.stderr.strip()}")
+    return done.stdout
+
+
+def port(recipe: Path, python: str, pypi: PyPI = pypi_files, source: Path | None = None,
+         resolve: Resolve = uv_compile) -> Release:
+    """The release for the recipe in `recipe` (the directory of its hop3.toml).
+
+    An app without a requirements.txt is installed from its source, which the recipe
+    fetches at build time: `source` is an unpacked copy, for its name and dependencies."""
     spec = tomllib.loads((recipe / "hop3.toml").read_text())
     spec.setdefault("build", {})  # its mapper refuses what isn't built with pip
     meta = spec["metadata"]
@@ -82,8 +116,24 @@ def port(recipe: Path, python: str, pypi: PyPI = pypi_files) -> Release:
         if name in spec:
             mapper(release, spec[name])
     release.notes += [f"[{s}]: not mapped" for s in spec if s not in SECTIONS and s not in IGNORED]
-    release.pins, release.eggs = _requirements(recipe / "requirements.txt", python, pypi)
+    if (recipe / "requirements.txt").exists():
+        requirements = (recipe / "requirements.txt").read_text()
+    else:
+        requirements = _from_source(release, source, resolve)
+    release.pins, release.eggs = _requirements(requirements, python, pypi)
     return release
+
+
+def _from_source(release: Release, source: Path | None, resolve: Resolve) -> str:
+    if source is None:
+        raise PortError("no requirements.txt: for an app installed from its source, "
+                        "give its unpacked release with --source")
+    pyproject = source / "pyproject.toml"
+    if not pyproject.exists():
+        raise PortError(f"{source}: no pyproject.toml")
+    release.egg = tomllib.loads(pyproject.read_text())["project"]["name"]
+    release.notes.append(f"{release.egg} from its source: its dependencies are pinned as resolved today")
+    return resolve(pyproject, release.python)
 
 
 def _build(release: Release, build: dict) -> None:
@@ -93,9 +143,8 @@ def _build(release: Release, build: dict) -> None:
         raise PortError(f"toolchain {build.get('toolchain')!r}: only python is supported so far")
     if (install := _commands(build.get("build"))) not in ([], [PIP_INSTALL]):
         raise PortError(f"[build] build = {install}: only {PIP_INSTALL!r} is supported so far")
-    if not (release.recipe / "requirements.txt").exists():
-        raise PortError("no requirements.txt: apps installed from their source aren't supported so far")
     release.commands = _commands(build.get("before-build")) + _commands(build.get("after-build"))
+    release.node = any(NODE_COMMAND.match(c) for c in release.commands)
     _packages(release, "build", build)
 
 
@@ -178,24 +227,30 @@ def software_cfg(release: Release) -> str:
         "# by `hox port`: change the recipe and port it again rather than edit this file.",
         "[buildout]",
         "extends =",
+        *(["  ../../component/nodejs/buildout.cfg"] if release.node else []),
         *(["  ../../component/postgresql/buildout.cfg"] if release.database else []),
+        *(f"  ../../component/{COMPONENTS[e]}/buildout.cfg" for e in release.eggs if e in COMPONENTS),
         "  ../../stack/hop3/buildout.cfg",
         "  ./versions.cfg",
         "",
         "[python3]",
         f"<= python{release.python}",
         "",
+        *(["[nodejs]", f"<= nodejs-{NODE_VERSION}", ""] if release.node else []),
         "[hop3]",
         "base = ${:_profile_base_location_}/hop3",
         "files =",
         *(f"  {f} {md5}" for f, md5 in release.files.items()),
         "commands =",
         *(f"  {c}" for c in release.commands),
+        *(["tools = ${nodejs:location}/bin:${:base-tools}"] if release.node else []),
         "",
         "[python-app]",
         f"name = {release.name}",
+        *([f"egg = {release.egg}"] if release.egg else []),
         "eggs =",
-        *(f"  {e}" for e in release.eggs),
+        *(["  ${python-app-develop:egg}"] if release.egg else []),
+        *(f"  ${{{COMPONENTS[e]}:egg}}" if e in COMPONENTS else f"  {e}" for e in release.eggs),
         *([f"health = {release.health}"] if release.health else []),
         *(["postgresql-bin = ${postgresql:location}/bin"] if release.database else []),
         *([f"secrets = {' '.join(release.secrets)}"] if release.secrets else []),
@@ -211,7 +266,8 @@ def software_cfg(release: Release) -> str:
 
 
 def versions_cfg(release: Release) -> str:
-    return render_versions(release.pins, "hop3/requirements.txt by `hox port`", release.python)
+    source = "the app's pyproject.toml" if release.egg else "hop3/requirements.txt"
+    return render_versions(release.pins, f"{source} by `hox port`", release.python)
 
 
 def write(release: Release, out: Path) -> None:
@@ -240,24 +296,24 @@ def _packages(release: Release, section: str, value: dict) -> None:
         release.notes.append(f"[{section}] packages = {value['packages']}: needs SlapOS components")
 
 
-def _requirements(path: Path, python: str, pypi: PyPI) -> tuple[list[Pin], list[str]]:
-    """The pins of a compiled requirements.txt, and the eggs to install (all of them,
-    as `pip install -r` does)."""
+def _requirements(requirements: str, python: str, pypi: PyPI) -> tuple[list[Pin], list[str]]:
+    """The pins of compiled requirements, and the eggs to install (all of them, as
+    `pip install -r` does, but buildout's own, whose versions are SlapOS's)."""
     env = environment(python)
     supported = node_tags(python)
     pins, eggs = [], []
-    for line in path.read_text().splitlines():
+    for line in requirements.splitlines():
         line = line.split("#", 1)[0].strip()
         if not line:
             continue
         if line.startswith("-"):
-            raise PortError(f"{path.name}: {line!r}: only pinned requirements are supported")
+            raise PortError(f"requirements: {line!r}: only pinned requirements are supported")
         req = Requirement(line)
-        if req.marker and not req.marker.evaluate(env):
+        if (req.marker and not req.marker.evaluate(env)) or canonicalize_name(req.name) in BUILDOUT_TOOLS:
             continue
         version = next((s.version for s in req.specifier if s.operator == "=="), None)
         if version is None:
-            raise PortError(f"{path.name}: {line!r} isn't pinned")
+            raise PortError(f"requirements: {line!r} isn't pinned")
         files = pypi(req.name, version)
         pins.append(Pin(req.name, version, any(f.endswith((".tar.gz", ".zip")) for f in files),
                         wheel_kind([f for f in files if f.endswith(".whl")], supported)))

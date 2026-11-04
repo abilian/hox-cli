@@ -63,6 +63,7 @@ def pypi(name, version):
         "cal": ["cal-1.0-py3-none-any.whl"],
         "bcrypt": ["bcrypt-5.0.0.tar.gz", "bcrypt-5.0.0-cp39-abi3-manylinux_2_34_x86_64.whl"],
         "oldlib": ["oldlib-0.1.tar.gz"],
+        "misaka": ["misaka-2.1.1.tar.gz"],
     }[name]
 
 
@@ -104,6 +105,7 @@ def test_port(recipe):
     assert "web = python -m cal --port $PORT\n" in cfg
     assert "mailer = cal-mailer\n" in cfg
     assert "${" not in cfg.replace("${:_profile_base_location_}", "").replace("${postgresql:location}", "")
+    assert "nodejs" not in cfg and "egg =" not in cfg
     assert release.notes == [
         "[env] SECRET_KEY: generated as a 32-character password, not 'hex'",
         "[admin] email: set HOP3_ADMIN_EMAIL as an instance parameter",
@@ -143,7 +145,49 @@ def test_port_needs_pins(recipe):
         port(recipe, "3.13", pypi)
 
 
-def test_port_needs_requirements(recipe):
+def test_port_needs_requirements_or_source(recipe):
     (recipe / "requirements.txt").unlink()
-    with pytest.raises(PortError, match="no requirements.txt"):
+    with pytest.raises(PortError, match="no requirements.txt.*--source"):
         port(recipe, "3.13", pypi)
+
+
+def test_port_from_source(recipe, tmp_path):
+    (recipe / "requirements.txt").unlink()
+    toml = recipe / "hop3.toml"
+    toml.write_text(toml.read_text().replace('before-build = "bash scripts/download.sh"',
+                                             'before-build = ["bash scripts/download.sh", "npm ci"]'))
+    source = tmp_path / "src"
+    source.mkdir()
+    (source / "pyproject.toml").write_text('[project]\nname = "cal-app"\n')
+    resolved = []
+
+    def resolve(pyproject, python):
+        resolved.append((pyproject, python))
+        return "bcrypt==5.0.0\nsetuptools==84.0\noldlib==0.1\n"
+
+    release = port(recipe, "3.13", pypi, source=source, resolve=resolve)
+    assert resolved == [(source / "pyproject.toml", "3.13")]
+    assert release.egg == "cal-app" and release.node
+    assert release.eggs == ["bcrypt", "oldlib"]  # setuptools is SlapOS's
+    cfg = software_cfg(release)
+    assert "egg = cal-app\neggs =\n  ${python-app-develop:egg}\n  bcrypt\n" in cfg
+    assert "  ../../component/nodejs/buildout.cfg\n" in cfg
+    assert "[nodejs]\n<= nodejs-24.11.0\n" in cfg
+    assert "tools = ${nodejs:location}/bin:${:base-tools}\n" in cfg
+    assert "From the app's pyproject.toml by `hox port`" in versions_cfg(release)
+    assert any("resolved" in n for n in release.notes)
+
+
+def test_port_uses_the_component_of_a_package_that_needs_one(recipe):
+    requirements = recipe / "requirements.txt"
+    requirements.write_text(requirements.read_text() + "misaka==2.1.1\n")
+    cfg = software_cfg(port(recipe, "3.13", pypi))
+    assert "  ../../component/python-misaka/buildout.cfg\n" in cfg
+    assert "  ${python-misaka:egg}\n" in cfg
+    assert "  misaka\n" not in cfg
+
+
+def test_port_source_needs_a_project(recipe, tmp_path):
+    (recipe / "requirements.txt").unlink()
+    with pytest.raises(PortError, match="no pyproject.toml"):
+        port(recipe, "3.13", pypi, source=tmp_path)

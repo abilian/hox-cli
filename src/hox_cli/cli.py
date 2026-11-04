@@ -18,9 +18,18 @@ from . import status as status_module
 from .config import Config, ConfigError, Software
 from .dev import DevError
 from .lock import LockError
-from .master import Api, ComputeNode, MasterError, Request, Slap, find_node, next_name, stored_request
-from .port import PortError
+from .master import (
+    Api,
+    ComputeNode,
+    MasterError,
+    Request,
+    Slap,
+    find_node,
+    next_name,
+    stored_request,
+)
 from .node import INSTANCE_LOG, SLAPGRID_PROMISE_FAIL, SOFTWARE_LOG, Node, NodeError
+from .port import PortError
 
 app = App(name="hox", help="Drive our SlapOS work on Rapid.Space from the terminal.")
 api_app = App(name="api", help="Raw, read-only access to the master's API.")
@@ -94,7 +103,7 @@ def versions(lock_file: Path = Path("uv.lock"), *, python: str = "3.12"):
 
 
 @app.command
-def port(recipe: Path, slapos: Path, *, python: str = "3.13"):
+def port(recipe: Path, slapos: Path, *, python: str = "3.13", source: Path | None = None):
     """Write a SlapOS software release from a Hop3 recipe, on the hop3 stack.
 
     The release goes to <slapos>/software/<app id>/: a software.cfg, a
@@ -110,10 +119,13 @@ def port(recipe: Path, slapos: Path, *, python: str = "3.13"):
         A checkout of slapos_abilian_edge with stack/hop3/.
     python
         The release's Python.
+    source
+        For an app installed from its source (no requirements.txt): an unpacked
+        copy of the release its recipe fetches. Its dependencies are resolved with uv.
     """
     if not (slapos / "stack" / "hop3").is_dir():
         raise PortError(f"{slapos}: no stack/hop3/ (branch hop3-experiment?)")
-    release = port_module.port(recipe, python)
+    release = port_module.port(recipe, python, source=source)
     out = slapos / "software" / release.name
     port_module.write(release, out)
     print(f"{out}: software.cfg, versions.cfg, hop3/ ({len(release.files)} files)")
