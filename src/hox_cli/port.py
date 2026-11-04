@@ -44,9 +44,15 @@ PIP_INSTALL = "pip install -r requirements.txt"
 # The build commands that need Node (SBE's version, already in the node's shared parts).
 NODE_COMMAND = re.compile(r"(npm|npx|node)\b")
 NODE_VERSION = "24.11.0"
+# The first of SlapOS's Go components that builds what the catalog's Go apps ask for.
+GO_VERSION = "1.23"
 # Packages that buildout can't build by name alone, and the SlapOS component that
 # has what their build needs.
 COMPONENTS = {"misaka": "python-misaka"}
+# The kinds of [env] secret that the stack encodes from 32 random bytes, as Hop3 does
+# by default (`secrets` in the stack: NAME:kind). A password is the stack's own kind.
+ENCODED_SECRETS = {"hex", "base64", "urlsafe"}
+ADMIN_SCRIPT = "hop3-admin-create.sh"
 
 # Fetches a package's release files from PyPI: name, version -> file names.
 PyPI = Callable[[str, str], list[str]]
@@ -65,8 +71,11 @@ class Release:
     python: str
     recipe: Path  # the recipe's directory
     files: dict[str, str]  # the recipe's files, relative to it: their md5
+    generated: dict[str, str] = field(default_factory=dict)  # what the port adds to them: their text
     commands: list[str] = field(default_factory=list)  # run in the build
     node: bool = False  # the commands need Node
+    go: bool = False  # the app is built with Go
+    prebuilt: bool = False  # the recipe fetches a binary: provisional, SlapOS builds from source
     egg: str | None = None  # the app's distribution, when installed from its source
     pins: list[Pin] = field(default_factory=list)
     eggs: list[str] = field(default_factory=list)
@@ -104,9 +113,12 @@ def port(recipe: Path, python: str, pypi: PyPI = pypi_files, source: Path | None
     """The release for the recipe in `recipe` (the directory of its hop3.toml).
 
     An app without a requirements.txt is installed from its source, which the recipe
-    fetches at build time: `source` is an unpacked copy, for its name and dependencies."""
+    fetches at build time: `source` is an unpacked copy, for its name and dependencies,
+    or to tell a Go app (Hop3 finds its go.mod, the recipe doesn't name the toolchain)."""
     spec = tomllib.loads((recipe / "hop3.toml").read_text())
-    spec.setdefault("build", {})  # its mapper refuses what isn't built with pip
+    build = spec.setdefault("build", {})  # its mapper refuses what it can't build
+    if "toolchain" not in build and source is not None and (source / "go.mod").exists():
+        build["toolchain"] = "go"
     meta = spec["metadata"]
     files = sorted(f for f in (str(p.relative_to(recipe)) for p in recipe.rglob("*") if p.is_file())
                    if not OVERLAY.fullmatch(f))
@@ -116,6 +128,8 @@ def port(recipe: Path, python: str, pypi: PyPI = pypi_files, source: Path | None
         if name in spec:
             mapper(release, spec[name])
     release.notes += [f"[{s}]: not mapped" for s in spec if s not in SECTIONS and s not in IGNORED]
+    if release.go or release.prebuilt:
+        return release
     if (recipe / "requirements.txt").exists():
         requirements = (recipe / "requirements.txt").read_text()
     else:
@@ -139,11 +153,20 @@ def _from_source(release: Release, source: Path | None, resolve: Resolve) -> str
 def _build(release: Release, build: dict) -> None:
     if build.get("builder", "local") != "local":
         raise PortError(f"builder {build['builder']!r}: only the local builder is supported")
-    if build.get("toolchain") != "python":
-        raise PortError(f"toolchain {build.get('toolchain')!r}: only python is supported so far")
-    if (install := _commands(build.get("build"))) not in ([], [PIP_INSTALL]):
+    toolchain = build.get("toolchain")
+    if toolchain not in ("python", "go", "generic"):
+        raise PortError(f"toolchain {toolchain!r}: only python, go and generic are supported so far "
+                        "(a Go recipe that doesn't name it: give its source with --source)")
+    install = _commands(build.get("build"))
+    release.go = toolchain == "go"
+    release.prebuilt = toolchain == "generic"
+    if toolchain == "python" and install not in ([], [PIP_INSTALL]):
         raise PortError(f"[build] build = {install}: only {PIP_INSTALL!r} is supported so far")
-    release.commands = _commands(build.get("before-build")) + _commands(build.get("after-build"))
+    if release.prebuilt:
+        release.notes.append("toolchain 'generic': provisional, runs the binary the recipe fetches, "
+                             "until a variant of the recipe builds it from source")
+    release.commands = (_commands(build.get("before-build")) + ([] if toolchain == "python" else install)
+                        + _commands(build.get("after-build")))
     release.node = any(NODE_COMMAND.match(c) for c in release.commands)
     _packages(release, "build", build)
 
@@ -157,14 +180,24 @@ def _env(release: Release, env: dict) -> None:
         elif isinstance(value, str):
             release.environment.append(f"{key}={_shell(value)}")
         elif "generate" in value:
-            release.secrets.append(key)
-            release.notes.append(f"[env] {key}: generated as a 32-character password, not {value['generate']!r}")
+            _secret(release, key, value)
         elif value.get("key") in ("domain", "hostname") and "from" not in value:
             release.environment.append(f"{key}=$DOMAIN")
         elif value.get("key") == "name" and "from" not in value:
             release.environment.append(f"{key}={release.name}")
         else:
             release.notes.append(f"[env] {key} = {value}: not mapped")
+
+
+def _secret(release: Release, key: str, spec: dict) -> None:
+    kind = spec["generate"]
+    release.secrets.append(f"{key}:{kind}" if kind in ENCODED_SECRETS else key)
+    if kind not in ENCODED_SECRETS | {"password"}:
+        release.notes.append(f"[env] {key}: generated as a 32-character password, not {kind!r}")
+    elif kind != "password" and spec.get("length", 32) != 32:
+        release.notes.append(f"[env] {key}: generated from 32 bytes, not {spec['length']}")
+    if "prefix" in spec:
+        release.notes.append(f"[env] {key}: its prefix {spec['prefix']!r} is left out")
 
 
 def _run(release: Release, run: dict) -> None:
@@ -179,11 +212,17 @@ def _admin(release: Release, admin: dict) -> None:
     release.secrets.append("HOP3_ADMIN_PASSWORD")
     if "username" in admin:
         release.environment.append(f"HOP3_ADMIN_USER={_shell(admin['username'])}")
-    if admin.get("email") == "operator":
-        release.notes.append("[admin] email: set HOP3_ADMIN_EMAIL as an instance parameter")
+    if admin.get("email") == "operator":  # Hop3's operator: the create scripts require an address
+        release.environment.append(f"HOP3_ADMIN_EMAIL=admin@{release.name}.invalid")
+        release.notes.append(f"[admin] email: admin@{release.name}.invalid, unless HOP3_ADMIN_EMAIL is an instance parameter")
     elif "email" in admin:
         release.environment.append(f"HOP3_ADMIN_EMAIL={_shell(admin['email'])}")
-    release.processes.setdefault("release", []).extend(_commands(admin.get("create")))
+    create = admin.get("create", "")
+    if "\n" in create.strip() or "${" in create:  # in a script: buildout would split or substitute it
+        release.generated[ADMIN_SCRIPT] = create
+        release.files[ADMIN_SCRIPT] = hashlib.md5(create.encode()).hexdigest()
+        create = f"bash {ADMIN_SCRIPT}"
+    release.processes.setdefault("release", []).extend(_commands(create))
 
 
 def _probe(release: Release, probe: dict) -> None:
@@ -207,12 +246,13 @@ def _healthcheck(release: Release, healthcheck: dict) -> None:
     release.health = healthcheck.get("path")
 
 
-# The sections mapped, in this order: [admin] create runs after [run] before-run.
+# The sections mapped, in this order: [admin] create runs after [run] before-run,
+# and [env.computed] can read what [admin] sets.
 SECTIONS: dict[str, Callable[[Release, Any], None]] = {
     "build": _build,
-    "env": _env,
     "run": _run,
     "admin": _admin,
+    "env": _env,
     "probe": _probe,
     "volumes": _volumes,
     "addons": _addons,
@@ -225,13 +265,16 @@ def software_cfg(release: Release) -> str:
     lines = [
         f"# {release.title} {release.version}, from its Hop3 recipe in hop3/,",
         "# by `hox port`: change the recipe and port it again rather than edit this file.",
+        *(["# Provisional: runs the binary the recipe fetches, where a SlapOS release builds",
+           "# from source. To replace with a port of a variant of the recipe that does."] if release.prebuilt else []),
         "[buildout]",
         "extends =",
+        *(["  ../../component/golang/buildout.cfg"] if release.go else []),
         *(["  ../../component/nodejs/buildout.cfg"] if release.node else []),
         *(["  ../../component/postgresql/buildout.cfg"] if release.database else []),
         *(f"  ../../component/{COMPONENTS[e]}/buildout.cfg" for e in release.eggs if e in COMPONENTS),
         "  ../../stack/hop3/buildout.cfg",
-        "  ./versions.cfg",
+        *(["  ./versions.cfg"] if release.pins else []),
         "",
         "[python3]",
         f"<= python{release.python}",
@@ -243,6 +286,7 @@ def software_cfg(release: Release) -> str:
         *(f"  {f} {md5}" for f, md5 in release.files.items()),
         "commands =",
         *(f"  {c}" for c in release.commands),
+        *([f"tools = ${{golang{GO_VERSION}:location}}/bin:${{:base-tools}}"] if release.go else []),
         *(["tools = ${nodejs:location}/bin:${:base-tools}"] if release.node else []),
         "",
         "[python-app]",
@@ -276,9 +320,13 @@ def write(release: Release, out: Path) -> None:
         shutil.rmtree(out / "hop3")
     for f in release.files:
         (out / "hop3" / f).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(release.recipe / f, out / "hop3" / f)
+        if f in release.generated:
+            (out / "hop3" / f).write_text(release.generated[f])
+        else:
+            shutil.copyfile(release.recipe / f, out / "hop3" / f)
     (out / "software.cfg").write_text(software_cfg(release))
-    (out / "versions.cfg").write_text(versions_cfg(release))
+    if release.pins:
+        (out / "versions.cfg").write_text(versions_cfg(release))
 
 
 def _commands(value: str | list[str] | None) -> list[str]:

@@ -128,7 +128,7 @@ def port(recipe: Path, slapos: Path, *, python: str = "3.13", source: Path | Non
     release = port_module.port(recipe, python, source=source)
     out = slapos / "software" / release.name
     port_module.write(release, out)
-    print(f"{out}: software.cfg, versions.cfg, hop3/ ({len(release.files)} files)")
+    print(f"{out}: software.cfg, {'versions.cfg, ' if release.pins else ''}hop3/ ({len(release.files)} files)")
     for note in release.notes:
         print(f"  {note}")
 

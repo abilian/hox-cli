@@ -95,7 +95,7 @@ def test_port(recipe):
     assert "commands =\n  bash scripts/download.sh\n" in cfg
     assert "eggs =\n  cal\n  bcrypt\n  oldlib\n" in cfg
     assert "health = /health" in cfg
-    assert "secrets = SECRET_KEY HOP3_ADMIN_PASSWORD" in cfg
+    assert "secrets = HOP3_ADMIN_PASSWORD SECRET_KEY:hex" in cfg
     assert "  MODE='it'\"'\"'s on'\n" in cfg
     assert "  SITE=$DOMAIN\n" in cfg
     assert '  DB="$PGHOST:$PGPORT"\n' in cfg
@@ -107,8 +107,7 @@ def test_port(recipe):
     assert "${" not in cfg.replace("${:_profile_base_location_}", "").replace("${postgresql:location}", "")
     assert "nodejs" not in cfg and "egg =" not in cfg
     assert release.notes == [
-        "[env] SECRET_KEY: generated as a 32-character password, not 'hex'",
-        "[admin] email: set HOP3_ADMIN_EMAIL as an instance parameter",
+        "[admin] email: admin@cal.invalid, unless HOP3_ADMIN_EMAIL is an instance parameter",
         "[probe]: not created, nothing on SlapOS signs in with it",
         "[[addons]] redis: not supported",
         "[waf]: not mapped",
@@ -191,3 +190,121 @@ def test_port_source_needs_a_project(recipe, tmp_path):
     (recipe / "requirements.txt").unlink()
     with pytest.raises(PortError, match="no pyproject.toml"):
         port(recipe, "3.13", pypi, source=tmp_path)
+
+
+GO_APP = """
+[metadata]
+id = "forge"
+version = "1.0"
+
+[build]
+before-build = "bash scripts/download.sh"
+build = "make forge"
+
+[run]
+start = "./forge web"
+
+[env]
+TOKEN = { generate = "hex" }
+JWT = { generate = "urlsafe" }
+KEY = { generate = "base64" }
+PLAIN = { generate = "password", length = 20 }
+ID = { generate = "uuid" }
+SHORT = { generate = "hex", length = 8 }
+
+[admin]
+username = "root"
+email = "operator"
+password = { generate = "password" }
+create = '''
+set -e
+USER_NAME="${HOP3_ADMIN_USER:?not injected}"
+./forge admin create "$USER_NAME"
+'''
+"""
+
+
+@pytest.fixture
+def go_app(tmp_path):
+    recipe = tmp_path / "forge"
+    (recipe / "scripts").mkdir(parents=True)
+    (recipe / "hop3.toml").write_text(GO_APP)
+    (recipe / "scripts/download.sh").write_text("hop3-fetch https://example.org/forge.tar.gz | tar xz\n")
+    return recipe
+
+
+@pytest.fixture
+def go_source(tmp_path):
+    source = tmp_path / "forge-src"
+    source.mkdir()
+    (source / "go.mod").write_text("module example.org/forge\n")
+    return source
+
+
+def _no_pypi(name, version):
+    raise AssertionError(f"{name} {version}: a Go app has no eggs")
+
+
+def test_port_marks_a_prebuilt_binary_as_provisional(go_app):
+    toml = go_app / "hop3.toml"
+    toml.write_text(toml.read_text().replace('build = "make forge"', 'toolchain = "generic"'))
+    release = port(go_app, "3.13", _no_pypi)
+    assert release.prebuilt and release.eggs == []
+    assert release.commands == ["bash scripts/download.sh"]
+    assert any("provisional" in n for n in release.notes)
+    cfg = software_cfg(release)
+    assert "# Provisional: runs the binary" in cfg
+    assert "golang" not in cfg and "./versions.cfg" not in cfg
+
+
+def test_port_go_app_needs_its_source_to_be_told_apart(go_app):
+    with pytest.raises(PortError, match="--source"):
+        port(go_app, "3.13", _no_pypi)
+
+
+def test_port_go_builds_with_slapos_go(go_app, go_source, tmp_path):
+    release = port(go_app, "3.13", _no_pypi, source=go_source)
+    assert release.go and release.eggs == [] and release.pins == []
+    assert release.commands == ["bash scripts/download.sh", "make forge"]
+    cfg = software_cfg(release)
+    assert "  ../../component/golang/buildout.cfg\n" in cfg
+    assert "tools = ${golang1.23:location}/bin:${:base-tools}\n" in cfg
+    assert "./versions.cfg" not in cfg
+    assert "eggs =\nsecrets" in cfg
+    out = tmp_path / "out"
+    out.mkdir()
+    write(release, out)
+    assert not (out / "versions.cfg").exists()
+
+
+def test_port_multi_line_admin_create_becomes_a_script(go_app, go_source, tmp_path):
+    release = port(go_app, "3.13", _no_pypi, source=go_source)
+    assert release.processes["release"] == ["bash hop3-admin-create.sh"]
+    cfg = software_cfg(release)
+    assert "${HOP3_ADMIN_USER" not in cfg  # buildout would substitute it
+    assert "  hop3-admin-create.sh " in cfg  # fetched with the recipe's files
+    out = tmp_path / "out"
+    out.mkdir()
+    write(release, out)
+    script = (out / "hop3" / "hop3-admin-create.sh").read_text()
+    assert 'USER_NAME="${HOP3_ADMIN_USER:?not injected}"' in script  # as the recipe has it
+
+
+def test_port_generated_secrets_keep_their_kind(go_app, go_source):
+    release = port(go_app, "3.13", _no_pypi, source=go_source)
+    assert {"TOKEN:hex", "JWT:urlsafe", "KEY:base64", "PLAIN", "SHORT:hex"} <= set(release.secrets)
+    assert any(n.startswith("[env] ID:") for n in release.notes)  # uuid: not a kind we make
+    assert any(n.startswith("[env] SHORT:") for n in release.notes)  # 32 bytes, not 8
+
+
+def test_port_operator_email_has_a_default(go_app, go_source):
+    release = port(go_app, "3.13", _no_pypi, source=go_source)
+    assert "HOP3_ADMIN_EMAIL=admin@forge.invalid" in release.environment
+    assert any("HOP3_ADMIN_EMAIL" in n for n in release.notes)
+
+
+def test_port_computed_env_reads_the_admin(go_app, go_source):
+    toml = go_app / "hop3.toml"
+    toml.write_text(toml.read_text() + '\n[env.computed]\nADMIN_USERNAME = "${HOP3_ADMIN_USER}"\n')
+    env = port(go_app, "3.13", _no_pypi, source=go_source).environment
+    assert env.index("HOP3_ADMIN_USER=root") < env.index('ADMIN_USERNAME="$HOP3_ADMIN_USER"')
