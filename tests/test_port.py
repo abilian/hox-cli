@@ -245,6 +245,24 @@ def _no_pypi(name, version):
     raise AssertionError(f"{name} {version}: a Go app has no eggs")
 
 
+@pytest.mark.parametrize("go_mod, component", [
+    ("module x\n", "1.23"),  # says nothing
+    ("module x\n\ngo 1.9\n", "1.23"),  # as a number, 9 is below 23
+    ("module x\n\ngo 1.23.4\n", "1.23"),
+    ("module x\n\ngo 1.24.0\n", "1.24"),
+    ("module x\n\ngo 1.25.0\ntoolchain go1.25.8\n", "1.26"),  # SlapOS has no 1.25
+])
+def test_port_go_component_from_go_mod(go_app, go_source, go_mod, component):
+    (go_source / "go.mod").write_text(go_mod)
+    assert f"tools = ${{golang{component}:location}}/bin:" in software_cfg(port(go_app, "3.13", _no_pypi, source=go_source))
+
+
+def test_port_refuses_a_go_mod_newer_than_the_components(go_app, go_source):
+    (go_source / "go.mod").write_text("go 1.99\n")
+    with pytest.raises(PortError, match="1.99"):
+        port(go_app, "3.13", _no_pypi, source=go_source)
+
+
 def test_port_marks_a_prebuilt_binary_as_provisional(go_app):
     toml = go_app / "hop3.toml"
     toml.write_text(toml.read_text().replace('build = "make forge"', 'toolchain = "generic"'))

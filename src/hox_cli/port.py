@@ -44,8 +44,9 @@ PIP_INSTALL = "pip install -r requirements.txt"
 # The build commands that need Node (SBE's version, already in the node's shared parts).
 NODE_COMMAND = re.compile(r"(npm|npx|node)\b")
 NODE_VERSION = "24.11.0"
-# The first of SlapOS's Go components that builds what the catalog's Go apps ask for.
-GO_VERSION = "1.23"
+# SlapOS's Go components, oldest first: an app gets the first that its go.mod allows.
+GO_VERSIONS = ("1.23", "1.24", "1.26")
+GO_MOD_VERSION = re.compile(r"^go\s+(\d+\.\d+)", re.MULTILINE)
 # Packages that buildout can't build by name alone, and the SlapOS component that
 # has what their build needs.
 COMPONENTS = {"misaka": "python-misaka"}
@@ -74,7 +75,7 @@ class Release:
     generated: dict[str, str] = field(default_factory=dict)  # what the port adds to them: their text
     commands: list[str] = field(default_factory=list)  # run in the build
     node: bool = False  # the commands need Node
-    go: bool = False  # the app is built with Go
+    go: str = ""  # the app is built with this Go component
     prebuilt: bool = False  # the recipe fetches a binary: provisional, SlapOS builds from source
     egg: str | None = None  # the app's distribution, when installed from its source
     pins: list[Pin] = field(default_factory=list)
@@ -128,6 +129,8 @@ def port(recipe: Path, python: str, pypi: PyPI = pypi_files, source: Path | None
         if name in spec:
             mapper(release, spec[name])
     release.notes += [f"[{s}]: not mapped" for s in spec if s not in SECTIONS and s not in IGNORED]
+    if release.go and source is not None:
+        release.go = _go_component((source / "go.mod").read_text())
     if release.go or release.prebuilt:
         return release
     if (recipe / "requirements.txt").exists():
@@ -158,7 +161,7 @@ def _build(release: Release, build: dict) -> None:
         raise PortError(f"toolchain {toolchain!r}: only python, go and generic are supported so far "
                         "(a Go recipe that doesn't name it: give its source with --source)")
     install = _commands(build.get("build"))
-    release.go = toolchain == "go"
+    release.go = GO_VERSIONS[0] if toolchain == "go" else ""
     release.prebuilt = toolchain == "generic"
     if toolchain == "python" and install not in ([], [PIP_INSTALL]):
         raise PortError(f"[build] build = {install}: only {PIP_INSTALL!r} is supported so far")
@@ -287,7 +290,7 @@ def software_cfg(release: Release) -> str:
         *(f"  {f} {md5}" for f, md5 in release.files.items()),
         "commands =",
         *(f"  {c}" for c in release.commands),
-        *([f"tools = ${{golang{GO_VERSION}:location}}/bin:${{:base-tools}}"] if release.go else []),
+        *([f"tools = ${{golang{release.go}:location}}/bin:${{:base-tools}}"] if release.go else []),
         *(["tools = ${nodejs:location}/bin:${:base-tools}"] if release.node else []),
         "",
         "[python-app]",
@@ -328,6 +331,21 @@ def write(release: Release, out: Path) -> None:
     (out / "software.cfg").write_text(software_cfg(release))
     if release.pins:
         (out / "versions.cfg").write_text(versions_cfg(release))
+
+
+def _go_component(go_mod: str) -> str:
+    """The first Go component at least as new as what a go.mod asks for."""
+    asked = GO_MOD_VERSION.search(go_mod)
+    if asked is None:
+        return GO_VERSIONS[0]
+    for version in GO_VERSIONS:
+        if _minor(version) >= _minor(asked[1]):
+            return version
+    raise PortError(f"go.mod asks for Go {asked[1]}: SlapOS's newest component here is {GO_VERSIONS[-1]}")
+
+
+def _minor(version: str) -> int:
+    return int(version.split(".")[1])
 
 
 def _commands(value: str | list[str] | None) -> list[str]:
