@@ -10,8 +10,9 @@ import shlex
 import shutil
 import subprocess
 import tomllib
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +51,8 @@ GO_MOD_VERSION = re.compile(r"^go\s+(\d+\.\d+)", re.MULTILINE)
 # Packages that buildout can't build by name alone, and the SlapOS component that
 # has what their build needs.
 COMPONENTS = {"misaka": "python-misaka"}
+# In a venv, pip builds them by name: the SlapOS component with the libraries an sdist needs.
+BUILD_LIBRARIES = {"cffi": "libffi"}
 # The kinds of [env] secret that the stack encodes from 32 random bytes, as Hop3 does
 # by default (`secrets` in the stack: NAME:kind). A password is the stack's own kind.
 ENCODED_SECRETS = {"hex", "base64", "urlsafe"}
@@ -60,6 +63,9 @@ PyPI = Callable[[str, str], list[str]]
 
 # Pins a project's dependencies for the node: its pyproject.toml, Python -> requirements.
 Resolve = Callable[[Path, str], str]
+
+# The pins as a requirements file with their hashes: pins, Python -> its text.
+Hashes = Callable[[list[Pin], str], str]
 
 
 @dataclass
@@ -80,6 +86,9 @@ class Release:
     egg: str | None = None  # the app's distribution, when installed from its source
     pins: list[Pin] = field(default_factory=list)
     eggs: list[str] = field(default_factory=list)
+    venv: bool = False  # installed by pip in a venv of its own, not as eggs by buildout
+    requirements: str = ""  # for the venv: the pins with their hashes
+    uploaded_prior_to: str = ""  # for the venv: what its packages' builds may fetch
     # What Hop3 gives every app, then what the recipe asks for.
     environment: list[str] = field(default_factory=lambda: ["HOST_NAME=$DOMAIN", "HOP3_PUBLIC_URL=$URL"])
     secrets: list[str] = field(default_factory=list)
@@ -109,8 +118,18 @@ def uv_compile(pyproject: Path, python: str) -> str:
     return done.stdout
 
 
+def uv_hashes(pins: list[Pin], python: str) -> str:
+    done = subprocess.run(["uv", "pip", "compile", "-", "--no-deps", "--generate-hashes", "--python-version", python,
+                           "--python-platform", "x86_64-unknown-linux-gnu", "--no-header", "--no-annotate", "-q"],
+                          input="".join(f"{p.name}=={p.version}\n" for p in pins),
+                          capture_output=True, text=True, check=False)
+    if done.returncode:
+        raise PortError(f"uv pip compile --generate-hashes: {done.stderr.strip()}")
+    return done.stdout
+
+
 def port(recipe: Path, python: str, pypi: PyPI = pypi_files, source: Path | None = None,
-         resolve: Resolve = uv_compile) -> Release:
+         resolve: Resolve = uv_compile, venv: bool = False, hashes: Hashes = uv_hashes) -> Release:
     """The release for the recipe in `recipe` (the directory of its hop3.toml).
 
     An app without a requirements.txt is installed from its source, which the recipe
@@ -132,12 +151,18 @@ def port(recipe: Path, python: str, pypi: PyPI = pypi_files, source: Path | None
     if release.go and source is not None:
         release.go = _go_component((source / "go.mod").read_text())
     if release.go or release.prebuilt:
+        if venv:
+            raise PortError(f"{release.name}: --venv is for a Python app")
         return release
     if (recipe / "requirements.txt").exists():
         requirements = (recipe / "requirements.txt").read_text()
     else:
         requirements = _from_source(release, source, resolve)
-    release.pins, release.eggs = _requirements(requirements, python, pypi)
+    release.pins, release.eggs = _requirements(requirements, python, pypi, frozenset() if venv else BUILDOUT_TOOLS)
+    if venv:
+        release.venv = True
+        release.requirements = hashes(release.pins, python)
+        release.uploaded_prior_to = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     return release
 
 
@@ -276,9 +301,10 @@ def software_cfg(release: Release) -> str:
         *(["  ../../component/golang/buildout.cfg"] if release.go else []),
         *(["  ../../component/nodejs/buildout.cfg"] if release.node else []),
         *(["  ../../component/postgresql/buildout.cfg"] if release.database else []),
-        *(f"  ../../component/{COMPONENTS[e]}/buildout.cfg" for e in release.eggs if e in COMPONENTS),
+        *(f"  ../../component/{c}/buildout.cfg" for c in _components(release)),
         "  ../../stack/hop3/buildout.cfg",
-        *(["  ./versions.cfg"] if release.pins else []),
+        *(["  ../../stack/python-app/venv.cfg", "  ../../stack/hop3/venv.cfg"] if release.venv
+          else ["  ./versions.cfg"] if release.pins else []),
         "",
         "[python3]",
         f"<= python{release.python}",
@@ -292,12 +318,14 @@ def software_cfg(release: Release) -> str:
         *(f"  {c}" for c in release.commands),
         *([f"tools = {_tools(release)}"] if release.go or release.node else []),
         "",
+        *(["[python-app-requirements]",
+           "url = ${:_profile_base_location_}/requirements.txt",
+           f"md5sum = {hashlib.md5(release.requirements.encode()).hexdigest()}",
+           ""] if release.venv else []),
         "[python-app]",
         f"name = {release.name}",
         *([f"egg = {release.egg}"] if release.egg else []),
-        "eggs =",
-        *(["  ${python-app-develop:egg}"] if release.egg else []),
-        *(f"  ${{{COMPONENTS[e]}:egg}}" if e in COMPONENTS else f"  {e}" for e in release.eggs),
+        *(_venv_options(release) if release.venv else _eggs(release)),
         *([f"health = {release.health}"] if release.health else []),
         *(["postgresql-bin = ${postgresql:location}/bin"] if release.database else []),
         *([f"secrets = {' '.join(release.secrets)}"] if release.secrets else []),
@@ -328,8 +356,35 @@ def write(release: Release, out: Path) -> None:
         else:
             shutil.copyfile(release.recipe / f, out / "hop3" / f)
     (out / "software.cfg").write_text(software_cfg(release))
-    if release.pins:
+    if release.venv:
+        (out / "requirements.txt").write_text(release.requirements)
+    elif release.pins:
         (out / "versions.cfg").write_text(versions_cfg(release))
+
+
+def _compiled(release: Release) -> list[str]:
+    """What a venv builds from its sdist, where a wheel would bring compiled code."""
+    return [canonicalize_name(p.name) for p in release.pins if p.wheel == "binary"]
+
+
+def _components(release: Release) -> list[str]:
+    if release.venv:
+        return [BUILD_LIBRARIES[n] for n in _compiled(release) if n in BUILD_LIBRARIES]
+    return [COMPONENTS[e] for e in release.eggs if e in COMPONENTS]
+
+
+def _eggs(release: Release) -> list[str]:
+    return ["eggs =",
+            *(["  ${python-app-develop:egg}"] if release.egg else []),
+            *(f"  ${{{COMPONENTS[e]}:egg}}" if e in COMPONENTS else f"  {e}" for e in release.eggs)]
+
+
+def _venv_options(release: Release) -> list[str]:
+    compiled = _compiled(release)
+    return [*([f"no-binary = {' '.join(compiled)}"] if compiled else []),
+            *([f"build-libraries = {' '.join(f'${{{c}:location}}' for c in _components(release))}"]
+              if _components(release) else []),
+            f"uploaded-prior-to = {release.uploaded_prior_to}"]
 
 
 def _tools(release: Release) -> str:
@@ -369,9 +424,10 @@ def _packages(release: Release, section: str, value: dict) -> None:
         release.notes.append(f"[{section}] packages = {value['packages']}: needs SlapOS components")
 
 
-def _requirements(requirements: str, python: str, pypi: PyPI) -> tuple[list[Pin], list[str]]:
+def _requirements(requirements: str, python: str, pypi: PyPI,
+                  skip: Collection[str]) -> tuple[list[Pin], list[str]]:
     """The pins of compiled requirements, and the eggs to install (all of them, as
-    `pip install -r` does, but buildout's own, whose versions are SlapOS's)."""
+    `pip install -r` does, but those in `skip`: buildout's own, whose versions are SlapOS's)."""
     env = environment(python)
     supported = node_tags(python)
     pins, eggs = [], []
@@ -382,7 +438,7 @@ def _requirements(requirements: str, python: str, pypi: PyPI) -> tuple[list[Pin]
         if line.startswith("-"):
             raise PortError(f"requirements: {line!r}: only pinned requirements are supported")
         req = Requirement(line)
-        if (req.marker and not req.marker.evaluate(env)) or canonicalize_name(req.name) in BUILDOUT_TOOLS:
+        if (req.marker and not req.marker.evaluate(env)) or canonicalize_name(req.name) in skip:
             continue
         version = next((s.version for s in req.specifier if s.operator == "=="), None)
         if version is None:

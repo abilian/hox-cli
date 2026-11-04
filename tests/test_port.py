@@ -1,3 +1,5 @@
+import hashlib
+
 import pytest
 
 from hox_cli.port import PortError, port, software_cfg, versions_cfg, write
@@ -64,6 +66,8 @@ def pypi(name, version):
         "bcrypt": ["bcrypt-5.0.0.tar.gz", "bcrypt-5.0.0-cp39-abi3-manylinux_2_34_x86_64.whl"],
         "oldlib": ["oldlib-0.1.tar.gz"],
         "misaka": ["misaka-2.1.1.tar.gz"],
+        "setuptools": ["setuptools-84.0.tar.gz", "setuptools-84.0-py3-none-any.whl"],
+        "cffi": ["cffi-2.1.1.tar.gz", "cffi-2.1.1-cp313-cp313-manylinux_2_28_x86_64.whl"],
     }[name]
 
 
@@ -184,6 +188,48 @@ def test_port_uses_the_component_of_a_package_that_needs_one(recipe):
     assert "  ../../component/python-misaka/buildout.cfg\n" in cfg
     assert "  ${python-misaka:egg}\n" in cfg
     assert "  misaka\n" not in cfg
+
+
+def test_port_venv_builds_compiled_packages_from_source(recipe, tmp_path):
+    hashed = []
+
+    def hashes(pins, python):
+        hashed.append(([p.name for p in pins], python))
+        return "bcrypt==5.0.0 \\\n    --hash=sha256:abc\n"
+
+    release = port(recipe, "3.13", pypi, venv=True, hashes=hashes)
+    assert hashed == [(["bcrypt", "cal", "oldlib"], "3.13")]
+    cfg = software_cfg(release)
+    assert "  ../../stack/hop3/buildout.cfg\n  ../../stack/python-app/venv.cfg\n  ../../stack/hop3/venv.cfg\n" in cfg
+    assert "no-binary = bcrypt\n" in cfg  # oldlib has only an sdist, cal a pure wheel
+    assert "uploaded-prior-to = 20" in cfg
+    assert "versions.cfg" not in cfg and "eggs =" not in cfg
+    md5 = hashlib.md5(release.requirements.encode()).hexdigest()
+    assert f"[python-app-requirements]\nurl = ${{:_profile_base_location_}}/requirements.txt\nmd5sum = {md5}\n" in cfg
+    write(release, tmp_path)
+    assert (tmp_path / "requirements.txt").read_text() == release.requirements
+    assert not (tmp_path / "versions.cfg").exists()
+
+
+def test_port_venv_keeps_what_buildout_would_provide(recipe):
+    requirements = recipe / "requirements.txt"
+    requirements.write_text(requirements.read_text() + "setuptools==84.0\n")
+    release = port(recipe, "3.13", pypi, venv=True, hashes=lambda pins, python: "")
+    assert "setuptools" in release.eggs
+
+
+def test_port_venv_uses_the_library_a_package_needs(recipe):
+    requirements = recipe / "requirements.txt"
+    requirements.write_text(requirements.read_text() + "cffi==2.1.1\n")
+    cfg = software_cfg(port(recipe, "3.13", pypi, venv=True, hashes=lambda pins, python: ""))
+    assert "  ../../component/libffi/buildout.cfg\n" in cfg
+    assert "build-libraries = ${libffi:location}\n" in cfg
+    assert "no-binary = bcrypt cffi\n" in cfg
+
+
+def test_port_venv_is_for_a_python_app(go_app, go_source):
+    with pytest.raises(PortError, match="--venv"):
+        port(go_app, "3.13", source=go_source, venv=True)
 
 
 def test_port_source_needs_a_project(recipe, tmp_path):

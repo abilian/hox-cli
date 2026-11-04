@@ -106,7 +106,7 @@ def versions(lock_file: Path = Path("uv.lock"), *, python: str = "3.12"):
 
 
 @app.command
-def port(recipe: Path, slapos: Path, *, python: str = "3.13", source: Path | None = None):
+def port(recipe: Path, slapos: Path, *, python: str = "3.13", source: Path | None = None, venv: bool = False):
     """Write a SlapOS software release from a Hop3 recipe, on the hop3 stack.
 
     The release goes to <slapos>/software/<app id>/: a software.cfg, a
@@ -125,13 +125,18 @@ def port(recipe: Path, slapos: Path, *, python: str = "3.13", source: Path | Non
     source
         For an app installed from its source (no requirements.txt): an unpacked
         copy of the release its recipe fetches. Its dependencies are resolved with uv.
+    venv
+        Install the app with pip in a venv of its own, compiled packages from their
+        sdists, in place of buildout's eggs: goes to <slapos>/software/<app id>-venv/,
+        with a requirements.txt in place of the versions.cfg.
     """
     if not (slapos / "stack" / "hop3").is_dir():
         raise PortError(f"{slapos}: no stack/hop3/ (branch hop3-experiment?)")
-    release = port_module.port(recipe, python, source=source)
-    out = slapos / "software" / release.name
+    release = port_module.port(recipe, python, source=source, venv=venv)
+    out = slapos / "software" / (f"{release.name}-venv" if venv else release.name)
     port_module.write(release, out)
-    print(f"{out}: software.cfg, {'versions.cfg, ' if release.pins else ''}hop3/ ({len(release.files)} files)")
+    pins = "requirements.txt, " if venv else "versions.cfg, " if release.pins else ""
+    print(f"{out}: software.cfg, {pins}hop3/ ({len(release.files)} files)")
     for note in release.notes:
         print(f"  {note}")
 
