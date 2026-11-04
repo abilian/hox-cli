@@ -107,3 +107,19 @@ def test_destroy_resends_the_original_request(master):
 def test_destroy_unknown(master):
     with pytest.raises(DevError, match="no instance 'x'"):
         cli.destroy("x", yes=True)
+
+
+def test_deploy_refuses_an_unpushed_branch_before_touching_the_master(master, monkeypatch):
+    _, slap = master
+
+    def unpushed(sw):
+        raise DevError(f"{sw.branch}: push it first")
+
+    def touched(*args):
+        raise AssertionError("the master was touched")
+
+    monkeypatch.setattr(cli.dev, "require_pushed", unpushed)
+    monkeypatch.setattr(cli, "_make_allocatable", touched)
+    with pytest.raises(DevError, match="push it first"):
+        cli.deploy()
+    assert slap.requests == []

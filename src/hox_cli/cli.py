@@ -241,6 +241,15 @@ def _report_checks(results: list[dev.CheckResult]) -> int:
     return 0 if all(r.ok for r in results) else 1
 
 
+def _require_published(sw: Software, *, wait: bool = True) -> None:
+    """Refuse an unpushed branch: the node would get a 404, or an older release."""
+    head = dev.require_pushed(sw)
+    print(f"{sw.branch} is pushed at {head[:9]}")
+    if wait:
+        with httpx2.Client(timeout=30) as http:
+            dev.wait_for_github(sw, head, http)
+
+
 @app.command
 def rebuild(software: str | None = None, *, software_only: bool = False, no_wait: bool = False) -> int:
     """The dev loop: rebuild the branch URL in place on the node, redeploy, check.
@@ -259,11 +268,7 @@ def rebuild(software: str | None = None, *, software_only: bool = False, no_wait
     """
     config = _config()
     sw = config.software_named(software)
-    head = dev.require_pushed(sw)
-    print(f"{sw.branch} is pushed at {head[:9]}")
-    if not no_wait:
-        with httpx2.Client(timeout=30) as http:
-            dev.wait_for_github(sw, head, http)
+    _require_published(sw, wait=not no_wait)
     node = Node(config.node.ssh)
     node.slapgrid(f"software --force --only-sr {sw.branch_url}")
     if software_only:
@@ -458,12 +463,14 @@ def deploy(software: str | None = None) -> int:
     `hox setup`, `hox request`, then waits: for the allocation, for the node's
     build (hours for a big release without cache), for the checks (frontends
     take a while). Run it again after a failure: what is done is skipped.
+    Refuses if the local branch isn't pushed, and waits until GitHub serves it.
 
     Parameters
     ----------
     software
         A [software.<name>] of hox.toml; optional when there is only one.
     """
+    _require_published(_config().software_named(software))
     _make_allocatable(software, None)
     request(software)
     config = _config()
