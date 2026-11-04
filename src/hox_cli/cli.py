@@ -2,6 +2,8 @@
 
 import dataclasses
 import json
+import shlex
+import subprocess
 import sys
 from pathlib import Path
 from typing import Annotated, Literal
@@ -15,6 +17,7 @@ from . import dev, lock, panel
 from . import port as port_module
 from . import report as report_module
 from . import status as status_module
+from . import try_start as try_start_module
 from .config import Config, ConfigError, Software
 from .dev import DevError
 from .lock import LockError
@@ -281,6 +284,27 @@ def rebuild(software: str | None = None, *, software_only: bool = False, no_wait
         print("some promises fail (see above)")
     inst = _instance_or_fail(_api(config), sw)  # connection parameters, as published by this run
     return _report_checks(dev.run_checks(sw.checks, inst.connection, node))
+
+
+@app.command
+def try_start(software: str, *, timeout: int = 300) -> int:
+    """Start a test build's real processes on the node, and see whether they come up.
+
+    What `/srv/hox-dev/run-build.sh` built: the release's own scripts, in a temporary
+    directory, with its haproxy and a PostgreSQL of their own. Stops at the first
+    failure, with the logs. No frontend, nothing asked of the master.
+
+    Parameters
+    ----------
+    software
+        The directory of the build in /srv/hox-dev: a release's name.
+    timeout
+        Seconds to wait for the app to answer.
+    """
+    source = Path(try_start_module.__file__).read_bytes()
+    python = f"cd {try_start_module.BUILDS} && /opt/slapos/parts/python3/bin/python3 -u - {shlex.quote(software)} {timeout}"
+    command = f"su -s /bin/sh slapsoft -c {shlex.quote(python)}"
+    return subprocess.run([*_config().node.ssh, command], input=source, check=False).returncode
 
 
 @app.command
