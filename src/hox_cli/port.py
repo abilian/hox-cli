@@ -80,6 +80,7 @@ class Release:
     files: dict[str, str]  # the recipe's files, relative to it: their md5
     generated: dict[str, str] = field(default_factory=dict)  # what the port adds to them: their text
     commands: list[str] = field(default_factory=list)  # run in the build
+    toolchain: str = ""
     node: bool = False  # the commands need Node
     go: str = ""  # the app is built with this Go component
     prebuilt: bool = False  # the recipe fetches a binary: provisional, SlapOS builds from source
@@ -150,7 +151,7 @@ def port(recipe: Path, python: str, pypi: PyPI = pypi_files, source: Path | None
     release.notes += [f"[{s}]: not mapped" for s in spec if s not in SECTIONS and s not in IGNORED]
     if release.go and source is not None:
         release.go = _go_component((source / "go.mod").read_text())
-    if release.go or release.prebuilt:
+    if release.toolchain != "python":
         if venv:
             raise PortError(f"{release.name}: --venv is for a Python app")
         return release
@@ -182,9 +183,10 @@ def _build(release: Release, build: dict) -> None:
     if build.get("builder", "local") != "local":
         raise PortError(f"builder {build['builder']!r}: only the local builder is supported")
     toolchain = build.get("toolchain")
-    if toolchain not in ("python", "go", "generic"):
-        raise PortError(f"toolchain {toolchain!r}: only python, go and generic are supported so far "
+    if toolchain not in ("python", "go", "generic", "node", "php"):
+        raise PortError(f"toolchain {toolchain!r}: only python, go, generic, node and php are supported so far "
                         "(a Go recipe that doesn't name it: give its source with --source)")
+    release.toolchain = toolchain
     install = _commands(build.get("build"))
     release.go = GO_VERSIONS[0] if toolchain == "go" else ""
     release.prebuilt = toolchain == "generic"
@@ -195,7 +197,10 @@ def _build(release: Release, build: dict) -> None:
                              "until a variant of the recipe builds it from source")
     release.commands = (_commands(build.get("before-build")) + ([] if toolchain == "python" else install)
                         + _commands(build.get("after-build")))
-    release.node = any(NODE_COMMAND.match(c) for c in release.commands)
+    release.node = toolchain == "node" or any(NODE_COMMAND.match(c) for c in release.commands)
+    if toolchain == "php":
+        release.processes |= {"fpm": ["hop3-php-fpm"], "web": ["hop3-php-web"]}
+        release.environment.append("PHPRC=${hop3-php-ini:output}")
     _packages(release, "build", build)
 
 
@@ -272,6 +277,13 @@ def _addons(release: Release, addons: list[dict]) -> None:
             release.notes.append(f"[[addons]] {addon['type']}: not supported")
 
 
+def _proxy(release: Release, proxy: dict) -> None:
+    if release.toolchain == "php" and proxy.keys() == {"deny"}:  # for nginx in stack/hop3/php.cfg
+        release.environment.append(f"HOP3_PROXY_DENY={_shell(' '.join(proxy['deny']))}")
+    else:
+        release.notes.append(f"[proxy] {proxy}: not mapped")
+
+
 def _healthcheck(release: Release, healthcheck: dict) -> None:
     release.health = healthcheck.get("path")
 
@@ -285,6 +297,7 @@ SECTIONS: dict[str, Callable[[Release, Any], None]] = {
     "probe": _probe,
     "volumes": _volumes,
     "addons": _addons,
+    "proxy": _proxy,
     "healthcheck": _healthcheck,
 }
 
@@ -300,9 +313,12 @@ def software_cfg(release: Release) -> str:
         "extends =",
         *(["  ../../component/golang/buildout.cfg"] if release.go else []),
         *(["  ../../component/nodejs/buildout.cfg"] if release.node else []),
-        *(["  ../../component/postgresql/buildout.cfg"] if release.database else []),
+        *(["  ../../component/apache-php/buildout.cfg", "  ../../component/nginx/buildout.cfg"]
+          if release.toolchain == "php" else []),
+        *(["  ../../component/postgresql/buildout.cfg"] if release.database or release.toolchain == "php" else []),
         *(f"  ../../component/{c}/buildout.cfg" for c in _components(release)),
         "  ../../stack/hop3/buildout.cfg",
+        *(["  ../../stack/hop3/php.cfg"] if release.toolchain == "php" else []),
         *(["  ../../stack/python-app/venv.cfg", "  ../../stack/hop3/venv.cfg"] if release.venv
           else ["  ./versions.cfg"] if release.pins else []),
         "",
@@ -310,13 +326,18 @@ def software_cfg(release: Release) -> str:
         f"<= python{release.python}",
         "",
         *(["[nodejs]", f"<= nodejs-{NODE_VERSION}", ""] if release.node else []),
+        *(["[nodejs-headers]", f"<= nodejs-headers-{NODE_VERSION}", "",
+           "# Native modules from their source, where npm would fetch a prebuilt binary.",
+           "[python-app-git]", "environment +=", "  npm_config_build_from_source=true",
+           "  npm_config_tarball=${nodejs-headers:target}", "  NODE_GYP_FORCE_PYTHON=${python3:location}/bin/python3",
+           ""] if release.toolchain == "node" else []),
         "[hop3]",
         "base = ${:_profile_base_location_}/hop3",
         "files =",
         *(f"  {f} {md5}" for f, md5 in release.files.items()),
         "commands =",
         *(f"  {c}" for c in release.commands),
-        *([f"tools = {_tools(release)}"] if release.go or release.node else []),
+        *([f"tools = {_tools(release)}"] if release.go or release.node or release.toolchain == "php" else []),
         "",
         *(["[python-app-requirements]",
            "url = ${:_profile_base_location_}/requirements.txt",
@@ -391,6 +412,8 @@ def _tools(release: Release) -> str:
     """What the build finds on PATH, before what the stack gives every release."""
     tools = [f"${{golang{release.go}:location}}/bin"] if release.go else []
     tools += ["${nodejs:location}/bin"] if release.node else []
+    tools += ["${gcc:prefix}/bin", "${binutils:location}/bin"] if release.toolchain == "node" else []
+    tools += ["${hop3-php:tools}"] if release.toolchain == "php" else []
     return ":".join([*tools, "${:base-tools}"])
 
 

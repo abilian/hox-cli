@@ -130,7 +130,7 @@ def test_write(recipe, tmp_path):
 
 
 @pytest.mark.parametrize("old, new, error", [
-    ('toolchain = "python"', 'toolchain = "node"', "toolchain 'node'"),
+    ('toolchain = "python"', 'toolchain = "ruby"', "toolchain 'ruby'"),
     ('build = "pip install', 'build = "make" #', "only 'pip install -r requirements.txt'"),
     ('start = "python -m cal --port $PORT"', 'start = "cal --port ${PORT}x"', "commands must be one line"),
     ('before-build = "bash', 'before-build = "X=${HOME} bash', "commands must be one line"),
@@ -381,3 +381,84 @@ def test_port_computed_env_reads_the_admin(go_app, go_source):
     toml.write_text(toml.read_text() + '\n[env.computed]\nADMIN_USERNAME = "${HOP3_ADMIN_USER}"\n')
     env = port(go_app, "3.13", _no_pypi, source=go_source).environment
     assert env.index("HOP3_ADMIN_USER=root") < env.index('ADMIN_USERNAME="$HOP3_ADMIN_USER"')
+
+
+NODE_APP = """
+[metadata]
+id = "kuma"
+version = "2.0"
+
+[build]
+toolchain = "node"
+before-build = "bash scripts/download.sh"
+build = ["npm ci", "npm run build"]
+
+[run]
+start = "node server.js"
+"""
+
+
+def test_port_node_app_compiles_its_native_modules(go_app):
+    (go_app / "hop3.toml").write_text(NODE_APP)
+    release = port(go_app, "3.13", _no_pypi)
+    assert release.node and release.eggs == []
+    assert release.commands == ["bash scripts/download.sh", "npm ci", "npm run build"]
+    cfg = software_cfg(release)
+    assert "[nodejs-headers]\n<= nodejs-headers-24.11.0\n" in cfg
+    assert "  npm_config_build_from_source=true\n" in cfg
+    assert "  npm_config_tarball=${nodejs-headers:target}\n" in cfg
+    assert "${gcc:prefix}/bin" in cfg and "./versions.cfg" not in cfg
+
+
+def test_port_node_app_in_a_go_build_keeps_its_prebuilt_tools(go_app, go_source):
+    toml = go_app / "hop3.toml"
+    toml.write_text(toml.read_text().replace('build = "make forge"', 'build = ["npm ci", "go build ."]'))
+    assert "npm_config_build_from_source" not in software_cfg(port(go_app, "3.13", _no_pypi, source=go_source))
+
+
+PHP_APP = """
+[metadata]
+id = "books"
+version = "1.0"
+
+[build]
+toolchain = "php"
+before-build = "bash scripts/download.sh"
+build = "true"
+
+[run]
+before-run = "bash scripts/setup.sh"
+
+[proxy]
+deny = ["/config", "/data"]
+
+[[addons]]
+type = "postgres"
+"""
+
+
+def test_port_php_app_runs_php_fpm_behind_nginx(go_app):
+    (go_app / "hop3.toml").write_text(PHP_APP)
+    release = port(go_app, "3.13", _no_pypi)
+    assert release.processes == {"release": ["bash scripts/setup.sh"], "fpm": ["hop3-php-fpm"], "web": ["hop3-php-web"]}
+    assert "HOP3_PROXY_DENY='/config /data'" in release.environment
+    assert not release.notes
+    cfg = software_cfg(release)
+    assert ("  ../../component/apache-php/buildout.cfg\n  ../../component/nginx/buildout.cfg\n"
+            "  ../../component/postgresql/buildout.cfg\n"
+            "  ../../stack/hop3/buildout.cfg\n  ../../stack/hop3/php.cfg\n") in cfg
+    assert "tools = ${hop3-php:tools}:${:base-tools}\n" in cfg
+    assert "  PHPRC=${hop3-php-ini:output}\n" in cfg
+    assert "postgresql-bin = ${postgresql:location}/bin\n" in cfg
+
+
+def test_port_proxy_section_is_a_note_for_other_apps(go_app, go_source):
+    toml = go_app / "hop3.toml"
+    toml.write_text(toml.read_text() + '\n[proxy]\ndeny = ["/config"]\n')
+    assert any(n.startswith("[proxy]") for n in port(go_app, "3.13", _no_pypi, source=go_source).notes)
+
+
+def test_port_venv_refuses_a_php_app(go_app):
+    (go_app / "hop3.toml").write_text(PHP_APP)
+    with pytest.raises(PortError, match="--venv is for a Python app"):
+        port(go_app, "3.13", _no_pypi, venv=True)
