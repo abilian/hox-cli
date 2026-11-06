@@ -97,6 +97,7 @@ class Release:
     processes: dict[str, list[str]] = field(default_factory=dict)  # name: its commands
     health: str | None = None
     database: bool = False
+    mariadb: bool = False
     notes: list[str] = field(default_factory=list)  # what wasn't mapped, or needs a look
 
 
@@ -273,6 +274,8 @@ def _addons(release: Release, addons: list[dict]) -> None:
     for addon in addons:
         if addon["type"] == "postgres":
             release.database = True
+        elif addon["type"] == "mysql":
+            release.mariadb = True
         else:
             release.notes.append(f"[[addons]] {addon['type']}: not supported")
 
@@ -316,6 +319,7 @@ def software_cfg(release: Release) -> str:
         *(["  ../../component/apache-php/buildout.cfg", "  ../../component/nginx/buildout.cfg"]
           if release.toolchain == "php" else []),
         *(["  ../../component/postgresql/buildout.cfg"] if release.database or release.toolchain == "php" else []),
+        *(["  ../../component/mariadb/buildout.cfg"] if release.mariadb else []),
         *(f"  ../../component/{c}/buildout.cfg" for c in _components(release)),
         "  ../../stack/hop3/buildout.cfg",
         *(["  ../../stack/hop3/php.cfg"] if release.toolchain == "php" else []),
@@ -349,6 +353,7 @@ def software_cfg(release: Release) -> str:
         *(_venv_options(release) if release.venv else _eggs(release)),
         *([f"health = {release.health}"] if release.health else []),
         *(["postgresql-bin = ${postgresql:location}/bin"] if release.database else []),
+        *(["mariadb-bin = ${mariadb:location}/bin"] if release.mariadb else []),
         *([f"secrets = {' '.join(release.secrets)}"] if release.secrets else []),
         "environment =",
         *(f"  {e}" for e in release.environment),

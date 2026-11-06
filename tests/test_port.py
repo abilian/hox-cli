@@ -452,6 +452,16 @@ def test_port_php_app_runs_php_fpm_behind_nginx(go_app):
     assert "postgresql-bin = ${postgresql:location}/bin\n" in cfg
 
 
+def test_port_mysql_addon_is_mariadb_in_the_partition(go_app):
+    (go_app / "hop3.toml").write_text(PHP_APP.replace('type = "postgres"', 'type = "mysql"'))
+    release = port(go_app, "3.13", _no_pypi)
+    assert release.mariadb and not release.database and not release.notes
+    cfg = software_cfg(release)
+    assert "  ../../component/mariadb/buildout.cfg\n" in cfg
+    assert "mariadb-bin = ${mariadb:location}/bin\n" in cfg
+    assert "postgresql-bin" not in cfg
+
+
 def test_port_proxy_section_is_a_note_for_other_apps(go_app, go_source):
     toml = go_app / "hop3.toml"
     toml.write_text(toml.read_text() + '\n[proxy]\ndeny = ["/config"]\n')

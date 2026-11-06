@@ -29,7 +29,7 @@ BUILDS = Path("/srv/hox-dev")
 # ponytail: fixed ports, so one run at a time; no node has this partition.
 PARTITION = "slappart99"
 # Its own loopback address and the stack's port: some apps can't be told another.
-POSTGRES_HOST = "127.0.0.99"
+DATABASE_HOST = "127.0.0.99"
 FRONTEND = "try-start.invalid"
 REFERENCE = re.compile(r"(?<!\$)\$\{([^:}]*):([^}]*)\}")
 
@@ -113,7 +113,7 @@ class Run:
             (build / "instance.cfg").read_text(),
             {
                 ("buildout", "directory"): str(home),
-                ("slap-configuration", "ipv4-random"): POSTGRES_HOST,
+                ("slap-configuration", "ipv4-random"): DATABASE_HOST,
                 ("slap-configuration", "ipv6-random"): "::1",
                 ("request-frontend", "connection-secure_access"): f"https://{FRONTEND}",
                 ("request-frontend", "connection-domain"): FRONTEND,
@@ -145,6 +145,8 @@ class Run:
         self.env = self.profile.environment()
         if "postgresql" in sections:
             self.start_postgres()
+        if "mariadb" in sections:
+            self.start("mariadb", self.profile.get("mariadb", "command-line"))
         if "haproxy" in sections:
             self.start("haproxy", self.profile.get("haproxy", "command-line"))
 
@@ -160,11 +162,11 @@ class Run:
         password.write_text(get("password"))
         subprocess.run([tool("initdb"), "-D", pgdata, "-U", user, "-A", "md5", f"--pwfile={password}", "-E", "UTF8"],
                        check=True, stdout=subprocess.DEVNULL)
-        options = f"-p {port} -k {self.home} -c listen_addresses={POSTGRES_HOST}"
+        options = f"-p {port} -k {self.home} -c listen_addresses={DATABASE_HOST}"
         self.postgres = [tool("pg_ctl"), "-D", pgdata, "-m", "fast", "stop"]
         subprocess.run([tool("pg_ctl"), "-D", pgdata, "-w", "-l", str(self.log("postgres")), "-o", options, "start"],
                        check=True, stdout=subprocess.DEVNULL)
-        subprocess.run([tool("createdb"), "-h", POSTGRES_HOST, "-p", port, "-U", user, name], check=True,
+        subprocess.run([tool("createdb"), "-h", DATABASE_HOST, "-p", port, "-U", user, name], check=True,
                        env={**os.environ, "PGPASSWORD": get("password")})
 
     def url(self) -> str:
