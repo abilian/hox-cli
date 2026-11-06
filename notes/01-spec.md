@@ -27,7 +27,15 @@ One Rapid.Space project, one compute node, a few software releases (mynij-proxy 
 
 Every command prints what it does in one line per step and fails with a non-zero exit code and the master's or node's own message when a step fails. Commands that change state are idempotent: running them twice is harmless.
 
-`hox status [SOFTWARE]` (read-only)
+`hox instances` (read-only)
+- The project's instance trees: status from the node, memory, frontend URL; `--long` adds their software in hox.toml, branch or commit, and partition. The master's state is what was requested, so an unreachable node makes the status `unknown` and the list still prints. Of the connection parameters, only `url` is read: the others can hold credentials.
+- A service counts as down if it ends in `-on-watch` and isn't `RUNNING`, or is in another state than `EXITED` or `STOPPED`. Supervisor restarts nothing and shows no exit code, so a crash reads `EXITED`. A service that exits by design in `etc/service` is named in `one_shot` of `[software.<name>]`.
+
+`hox status` (read-only)
+- The whole system: the node's uptime, partitions used and free, memory and disk, builds not complete, failing promises, services down by name, hox.toml's software with no instance, then the `hox instances` table. It doesn't depend on how many software hox.toml has.
+
+`hox status NAME` (read-only), by software or instance name
+- Services: how many run, which are down, memory.
 - Instance: requested state, partition, allocation, connection parameters (`url`, `backend-url`, …), and the master's news text for it.
 - Shared frontends requested by the instance: allocated or not.
 - Software on the node: built (`.completed`), building, failed (last buildout error), for each URL supplied to the node, named after its hox.toml software ("mynij-proxy branch", "abilian-sbe @ 971d944c2").

@@ -45,7 +45,7 @@ def test_software_named(config_data):
     assert config.software_named("sbe").instance == "sbe-1"
     with pytest.raises(ConfigError, match="several software"):
         config.software_named(None)
-    with pytest.raises(ConfigError, match="no software 'x'"):
+    with pytest.raises(ConfigError, match="no software or instance 'x'"):
         config.software_named("x")
 
 

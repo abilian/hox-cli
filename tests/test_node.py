@@ -10,6 +10,7 @@ from hox_cli.node import (
     failing_promises,
     last_buildout_errors,
     parse_facts,
+    parse_system,
     software_dir,
 )
 
@@ -61,8 +62,45 @@ def test_run_raises_on_failure():
         assert args == ["ssh", "host", "false"]
         return subprocess.CompletedProcess(args, 255, "", "Connection refused\n")
 
-    with pytest.raises(NodeError, match="exit 255: Connection refused"):
+    with pytest.raises(NodeError, match=r"^ssh host: Connection refused$"):
         Node(("ssh", "host"), run=fake_run).run("false")
+
+
+def test_run_names_the_command_that_failed_on_the_node():
+    def fake_run(args, **kwargs):
+        return subprocess.CompletedProcess(args, 1, "", "nope\n")
+
+    with pytest.raises(NodeError, match="'false': exit 1: nope"):
+        Node(("ssh", "host"), run=fake_run).run("false")
+
+
+def test_parse_system():
+    parts = [
+        "392400.12\n",
+        "/srv/slapgrid/slappart10\n/srv/slapgrid/slappart2\n/srv/slapgrid/slappart0\n",
+        "slappart0:web-2aa681dd2c1eb6c7422d9a9becca20d9-on-watch   RUNNING   pid 1, uptime 1:00:00\n"
+        "slappart0:release-31442f67c794e402600c64f31ae3672b        EXITED    Nov 05 06:05 PM\n"
+        "slappart2:web-2aa681dd2c1eb6c7422d9a9becca20d9-on-watch   BACKOFF   Exited too quickly\n"
+        "slappart2:postgres-start-on-watch                         RUNNING   pid 2, uptime 1:00:00\n"
+        "slappart2:bootstrap-monitor                               FATAL     Exited too quickly\n"
+        "slappart2:crond-on-watch                                  EXITED    Nov 05 06:05 PM\n"
+        "slappart2:release-31442f67c794e402600c64f31ae3672b        STOPPED   Not started\n"
+        "slappart2:redis-on-watch                                  STOPPED   Not started\n",
+        "slapuser0  102400\nslapuser0  1024\nroot  999999\nslapuser2  2048\n",
+        "               total        used        free      shared  buff/cache   available\n"
+        "Mem:            7900        4100         300          12        3500        3700\n"
+        "Swap:              0           0           0\n",
+        "Filesystem     1M-blocks  Used Available Use% Mounted on\n/dev/vda1 120000 76000 44000 64% /\n",
+    ]
+    system = parse_system(f"{SEPARATOR}\n".join(parts))
+    assert system.uptime_seconds == 392400
+    assert [p.name for p in system.partitions] == ["slappart0", "slappart2", "slappart10"]
+    web, broken, empty = system.partitions
+    assert (web.memory_mb, web.running, web.down) == (101, 1, [])
+    assert (broken.memory_mb, broken.running, broken.down) == (2, 1, ["web", "bootstrap-monitor", "crond", "redis"])
+    assert (empty.memory_mb, empty.running, empty.down) == (0, 0, [])
+    assert (system.memory_available_mb, system.memory_total_mb) == (3700, 7900)
+    assert (system.disk_free_mb, system.disk_total_mb) == (44000, 120000)
 
 
 def test_facts_sends_one_command():

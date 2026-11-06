@@ -57,6 +57,24 @@ def shown(line: str) -> bool:
     return bool(_SHOWN.search(line))
 
 
+@dataclass(frozen=True)
+class Partition:
+    name: str
+    memory_mb: int  # the resident size of its user's processes
+    running: int
+    down: list[str]  # services that should run and don't, as `service_name` shortens them
+
+
+@dataclass(frozen=True)
+class System:
+    uptime_seconds: int
+    partitions: list[Partition]
+    memory_available_mb: int
+    memory_total_mb: int
+    disk_free_mb: int
+    disk_total_mb: int
+
+
 class Node:
     def __init__(self, ssh: tuple[str, ...], run=subprocess.run, popen=subprocess.Popen, sleep=time.sleep):
         self._ssh = ssh
@@ -66,6 +84,8 @@ class Node:
 
     def run(self, command: str) -> str:
         result = self._run([*self._ssh, command], capture_output=True, text=True)
+        if result.returncode == SSH_FAILED:
+            raise NodeError(f"{self._ssh[0]} {self._ssh[-1]}: {result.stderr.strip()[-500:].replace(chr(10), '; ')}")
         if result.returncode != 0:
             raise NodeError(f"{shlex.join(self._ssh)} {command!r}: exit {result.returncode}: {result.stderr.strip()[-500:]}")
         return result.stdout
@@ -118,6 +138,60 @@ class Node:
              f"echo {SEPARATOR}", f"tail -n {LOG_LINES} {INSTANCE_LOG}"]
         )
         return parse_facts(urls, self.run(script))
+
+    def system(self) -> System:
+        return parse_system(self.run(_SYSTEM_SCRIPT))
+
+
+_SYSTEM_SCRIPT = f"; echo {SEPARATOR}; ".join([
+    "cut -d' ' -f1 /proc/uptime",
+    "ls -d /srv/slapgrid/slappart*",
+    "slapos node status 2>/dev/null",
+    "ps -eo user:32,rss --no-headers",
+    "free -m",
+    "df -m /srv/slapgrid",
+])
+_SERVICE = re.compile(r"(slappart\d+):(\S+)\s+([A-Z]+)")
+
+
+def service_name(program: str) -> str:
+    """web-2aa681dd2c1eb6c7422d9a9becca20d9-on-watch -> web."""
+    return re.sub(r"(-[0-9a-f]{32})?(-on-watch)?$", "", program)
+
+
+def parse_system(output: str) -> System:
+    uptime, names, services, processes, free, df = output.split(SEPARATOR + "\n")
+    running: dict[str, int] = {}
+    down: dict[str, list[str]] = {}
+    for partition, program, state in _SERVICE.findall(services):
+        # Supervisor restarts nothing here and shows no exit code, so a crash also reads
+        # EXITED: only -on-watch services must stay up, the others run once or wait their turn.
+        if state == "RUNNING":
+            running[partition] = running.get(partition, 0) + 1
+        elif program.endswith("-on-watch") or state not in ("EXITED", "STOPPED"):
+            down.setdefault(partition, []).append(service_name(program))
+    memory_kb: dict[str, int] = {}
+    for user, rss in (line.split() for line in processes.splitlines()):
+        if user.startswith("slapuser"):
+            partition = user.replace("slapuser", "slappart")
+            memory_kb[partition] = memory_kb.get(partition, 0) + int(rss)
+    # free -m: total used free shared buff/cache available; df -m: fs total used available.
+    memory = free.splitlines()[1].split()
+    disk = df.splitlines()[1].split()
+    partitions = sorted(
+        (name.rsplit("/", 1)[1] for name in names.split()), key=lambda name: int(name.removeprefix("slappart"))
+    )
+    return System(
+        uptime_seconds=int(float(uptime)),
+        partitions=[
+            Partition(name, memory_kb.get(name, 0) // 1024, running.get(name, 0), down.get(name, []))
+            for name in partitions
+        ],
+        memory_available_mb=int(memory[6]),
+        memory_total_mb=int(memory[1]),
+        disk_free_mb=int(disk[3]),
+        disk_total_mb=int(disk[1]),
+    )
 
 
 def parse_facts(urls: list[str], output: str) -> NodeFacts:

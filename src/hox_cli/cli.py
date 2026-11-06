@@ -2,6 +2,7 @@
 
 import dataclasses
 import json
+import re
 import shlex
 import subprocess
 import sys
@@ -31,7 +32,13 @@ from .master import (
     next_name,
     stored_request,
 )
-from .node import INSTANCE_LOG, SLAPGRID_PROMISE_FAIL, SOFTWARE_LOG, Node, NodeError
+from .node import (
+    INSTANCE_LOG,
+    SLAPGRID_PROMISE_FAIL,
+    SOFTWARE_LOG,
+    Node,
+    NodeError,
+)
 from .port import PortError
 
 app = App(name="hox", help="Drive our SlapOS work on Rapid.Space from the terminal.")
@@ -160,18 +167,59 @@ def build_report(software: str | None = None):
     print(report_module.markdown(config, sw, runs, usage))
 
 
+def _overview(config: Config) -> status_module.Overview:
+    api = _api(config)
+    return status_module.overview(config, api, Node(config.node.ssh), _node(config, api).reference)
+
+
+@app.command
+def instances(
+    *,
+    long: Annotated[bool, Parameter(name=["--long", "-l"])] = False,
+    json_: Annotated[bool, Parameter(name="--json")] = False,
+):
+    """List the project's instances, and whether their services run on the node.
+
+    `up` means their processes run: `hox check` tests that the app answers.
+
+    Parameters
+    ----------
+    long
+        Add each one's software in hox.toml, release and partition.
+    json_
+        Print the list as JSON, with everything.
+    """
+    config = _config()
+    result = _overview(config)
+    if json_:
+        _print_json([dataclasses.asdict(row) for row in result.instances])
+    else:
+        print(format_instances(result, long=long))
+
+
 @app.command
 def status(software: str | None = None, *, json_: Annotated[bool, Parameter(name="--json")] = False):
-    """Instance, frontends, builds on the node, failing promises, what GitHub serves.
+    """The whole system, or one software in detail.
+
+    Without a name: the node's uptime, partitions, memory and disk, the builds that
+    aren't complete, the failing promises, the services down, the instances. With one:
+    its instance, services, frontends, builds on the node, promises and what GitHub serves.
 
     Parameters
     ----------
     software
-        A [software.<name>] of hox.toml; optional when there is only one.
+        A software of hox.toml or an instance's name, to see it in detail.
     json_
         Print the report as JSON.
     """
     config = _config()
+    if software is None:
+        result = _overview(config)
+        if json_:
+            _print_json(dataclasses.asdict(result))
+        else:
+            print(format_overview(result, config))
+        return
     sw = config.software_named(software)
     with httpx2.Client(timeout=30) as http:
         api = _api(config)
@@ -182,6 +230,54 @@ def status(software: str | None = None, *, json_: Annotated[bool, Parameter(name
         print(format_report(report, config))
 
 
+def format_instances(o: status_module.Overview, *, long: bool = False) -> str:
+    def row(r: status_module.Deployed) -> tuple[str, ...]:
+        extra = (r.software or "-", r.release, r.partition or "-") if long else ()
+        memory = "-" if r.memory_mb is None else str(r.memory_mb)
+        return (r.instance, *extra, r.status, memory, r.frontend or "-")
+
+    header = ("INSTANCE", *(("SOFTWARE", "RELEASE", "PARTITION") if long else ()), "STATUS", "MB", "FRONTEND")
+    rows = [header, *map(row, o.instances)]
+    widths = [max(map(len, column)) for column in zip(*rows)]
+    lines = ["  ".join(cell.ljust(width) for cell, width in zip(r, widths)).rstrip() for r in rows]
+    if o.node_error:
+        lines.insert(0, f"node unreachable, so what runs is unknown: {o.node_error}\n")
+    return "\n".join(lines)
+
+
+def _duration(seconds: int) -> str:
+    days, hours, minutes = seconds // 86400, seconds // 3600 % 24, seconds // 60 % 60
+    return f"{days} d {hours} h" if days else f"{hours} h {minutes} min"
+
+
+def format_overview(o: status_module.Overview, config: Config) -> str:
+    out = []
+    if s := o.system:
+        used = {r.partition for r in o.instances}
+        free = [p.name for p in s.partitions if p.name not in used]
+        out.append(f"node           {config.node.title}: up {_duration(s.uptime_seconds)}")
+        out.append(f"partitions     {len(s.partitions) - len(free)} of {len(s.partitions)} in use"
+                   + (f", free: {', '.join(free)}" if free else ""))
+        out.append(f"memory         {s.memory_available_mb} MB available of {s.memory_total_mb} MB")
+        out.append(f"disk           {s.disk_free_mb // 1024} GB free of {s.disk_total_mb // 1024} GB")
+    if f := o.facts:
+        built = sum(b.state == "completed" for b in f.software)
+        out.append(f"builds         {built} of {len(f.software)} complete")
+        for b in f.software:
+            if b.state != "completed":
+                out.append(f"build          {config.url_name(b.url)}: {b.state}"
+                           + (f" (last error: {b.last_error})" if b.last_error else ""))
+        # Their output is for `hox status NAME`.
+        out += [f"promise        {re.sub(r"Promise '([^']+)' failed.*", r"\1", p)}" for p in f.failing_promises]
+        if not f.failing_promises:
+            out.append("promises       all OK in the last instance run")
+    # All of a partition's services are down while the node boots: its status says enough.
+    out += [f"down           {r.instance}: {', '.join(r.down)}" for r in o.instances if r.down and r.status != "not running"]
+    if o.undeployed:
+        out.append(f"not deployed   {', '.join(o.undeployed)}")
+    return "\n".join([*out, "", format_instances(o)] if out else [format_instances(o)])
+
+
 def format_report(r: status_module.Report, config: Config) -> str:
     out = []
     i = r.instance
@@ -190,6 +286,9 @@ def format_report(r: status_module.Report, config: Config) -> str:
     else:
         out.append(f"instance       {i.title}: {i.state}, {config.url_name(i.url)}, type {i.software_type}")
         out.append(f"partition      {i.partition or 'not allocated'}")
+        if s := r.services:
+            out.append(f"services       {s.running} running, {s.memory_mb} MB"
+                       + (f", down: {', '.join(s.down)}" if s.down else ""))
         out += [f"diagnosis      {d}" for d in r.diagnosis]
         if i.news:
             out.append(f"news           {i.news}")

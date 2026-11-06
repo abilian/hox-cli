@@ -63,6 +63,8 @@ path = "software/abilian-sbe/software.cfg"
 software_type = "default"
 product = "abilian-sbe"
 instance = "abilian-sbe-1"
+# These three run once at each start, from etc/service: their exit is not a failure.
+one_shot = ["sbe_assets", "sbe_create_admin", "sbe_initdb"]
 
 # No expected status yet: any HTTP answer passes. Tighten once we know what /
 # answers (probably a redirect to the login page).

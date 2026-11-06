@@ -1,6 +1,7 @@
 """hox.toml, parsed once into frozen dataclasses."""
 
 import dataclasses
+import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -47,6 +48,11 @@ class Check:
 RAW = "https://raw.githubusercontent.com"
 
 
+def short_ref(ref: str) -> str:
+    """A commit's first nine characters; a branch stays whole."""
+    return ref[:9] if re.fullmatch(r"[0-9a-f]{40}", ref) else ref
+
+
 @dataclass(frozen=True)
 class Software:
     name: str
@@ -60,6 +66,8 @@ class Software:
     checks: tuple[Check, ...] = ()
     # The instance's parameters, sent with every request; None keeps those it has.
     parameters: dict[str, str] | None = None
+    # Services of etc/service that exit once their work is done: their exit isn't a failure.
+    one_shot: tuple[str, ...] = ()
 
     def raw_url(self, file: str, ref: str | None = None) -> str:
         return f"{RAW}/{self.repo}/{ref or self.branch}/{file}"
@@ -92,15 +100,18 @@ class Config:
             if len(self.software) != 1:
                 raise ConfigError(f"several software in {FILENAME}, name one of: {', '.join(self.software)}")
             return next(iter(self.software.values()))
-        if name not in self.software:
-            raise ConfigError(f"no software {name!r} in {FILENAME} (have: {', '.join(self.software)})")
-        return self.software[name]
+        if name in self.software:
+            return self.software[name]
+        for sw in self.software.values():
+            if sw.instance == name:
+                return sw
+        raise ConfigError(f"no software or instance {name!r} in {FILENAME} (software: {', '.join(self.software)})")
 
     def url_name(self, url: str) -> str:
         """A software release URL as hox.toml knows it ("sbe branch", "sbe @ 971d944c2"), else the URL."""
         for sw in self.software.values():
             if ref := sw.ref_of(url):
-                return f"{sw.name} branch" if ref == sw.branch else f"{sw.name} @ {ref[:9]}"
+                return f"{sw.name} branch" if ref == sw.branch else f"{sw.name} @ {short_ref(ref)}"
         return url
 
 
