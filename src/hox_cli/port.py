@@ -373,6 +373,9 @@ def versions_cfg(release: Release) -> str:
 
 def write(release: Release, out: Path) -> None:
     """Write the release in `out` (software/<name>/), the recipe's files in out/hop3/."""
+    cfg = out / "software.cfg"
+    if cfg.exists() and "by `hox port`" not in cfg.read_text():
+        raise PortError(f"{cfg} doesn't come from hox port: give the recipe another id")
     if (out / "hop3").exists():
         shutil.rmtree(out / "hop3")
     for f in release.files:
@@ -381,7 +384,7 @@ def write(release: Release, out: Path) -> None:
             (out / "hop3" / f).write_text(release.generated[f])
         else:
             shutil.copyfile(release.recipe / f, out / "hop3" / f)
-    (out / "software.cfg").write_text(software_cfg(release))
+    cfg.write_text(software_cfg(release))
     if release.venv:
         (out / "requirements.txt").write_text(release.requirements)
     elif release.pins:

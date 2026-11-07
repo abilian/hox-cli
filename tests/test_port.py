@@ -121,6 +121,16 @@ def test_port(recipe):
     assert "oldlib = 0.1\n" in versions and "winlib" not in versions
 
 
+def test_write_leaves_a_release_it_did_not_write(recipe, tmp_path):
+    out = tmp_path / "software" / "radicale"
+    (out / "hop3").mkdir(parents=True)
+    (out / "software.cfg").write_text("[buildout]\n")
+    with pytest.raises(PortError, match="another id"):
+        write(port(recipe, "3.13", pypi), out)
+    assert (out / "software.cfg").read_text() == "[buildout]\n"
+    assert (out / "hop3").exists()
+
+
 def test_write(recipe, tmp_path):
     out = tmp_path / "software" / "cal"
     (out / "hop3" / "stale").mkdir(parents=True)
