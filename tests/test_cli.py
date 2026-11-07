@@ -104,6 +104,27 @@ def test_destroy_resends_the_original_request(master):
     assert slap.requests == [dataclasses.replace(existing(BRANCH_URL, "old"), state="destroyed")]
 
 
+@pytest.mark.parametrize("command, state", [(cli.stop, "stopped"), (cli.start, "started")])
+def test_stop_and_start_resend_the_original_request(master, command, state):
+    instances, slap = master
+    instances["old"] = existing(BRANCH_URL, "old")
+    command("old")
+    assert slap.requests == [dataclasses.replace(existing(BRANCH_URL, "old"), state=state)]
+
+
+def test_stop_unknown(master):
+    with pytest.raises(DevError, match="no instance 'x'"):
+        cli.stop("x")
+
+
+def test_start_refuses_a_destroyed_instance(master):
+    instances, slap = master
+    instances["old"] = dataclasses.replace(existing(BRANCH_URL, "old"), state="destroyed")
+    with pytest.raises(DevError, match="old is destroyed"):
+        cli.start("old")
+    assert slap.requests == []
+
+
 def test_destroy_unknown(master):
     with pytest.raises(DevError, match="no instance 'x'"):
         cli.destroy("x", yes=True)

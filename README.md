@@ -30,6 +30,7 @@ Without installing: `uv run --project hox-cli hox status`.
 - `hox supply [SOFTWARE] [--pinned COMMIT] [--remove]`: supply (or remove) the branch or a pinned URL on our node.
 - `hox request [SOFTWARE] [--name NAME] [--pinned COMMIT] [--replace] [--yes]`: request the instance; re-requesting re-sends the original request, with the parameters of `[software.<name>.parameters]` in hox.toml if it has that table. `--replace` destroys an instance on another URL and requests the next name.
 - `hox destroy NAME [--yes]`: destroy an instance.
+- `hox stop NAME`, `hox start NAME`: stop an instance's processes and keep its data, or start them again.
 - `hox deploy [SOFTWARE]`: from nothing on the master to an instance that passes its checks: `setup`, `request`, then waits for the allocation, the node's build (hours for SBE on a cold cache) and the checks (frontends take a while). Run it again after a failure.
 - `hox node-certificate`: print the compute node's (`[node] title`) reference, certificate and key as JSON, for `node-deployer/deploy.py`. Creates the node if needed; otherwise revokes its certificate for a new one, which cuts off a node still configured with the old one.
 - `hox re6st-token`: print the node's re6st token (the same one each time; 10+ minutes the first time). Only the token goes to stdout.

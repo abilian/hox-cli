@@ -541,6 +541,41 @@ def destroy(name: str, *, yes: bool = False):
     print(f"{name}: destruction requested")
 
 
+def _set_state(name: str, state: str) -> None:
+    config = _config()
+    existing = stored_request(_api(config), name)
+    if existing is None:
+        raise DevError(f"no instance {name!r} on the master")
+    if existing.state == "destroyed":
+        raise DevError(f"{name} is destroyed")
+    Slap.connect(config.master).request(dataclasses.replace(existing, state=state))
+    print(f"{name}: requested state {state}; the node acts within a minute or two (hox instances)")
+
+
+@app.command
+def stop(name: str):
+    """Stop an instance's processes and keep its data, by re-sending its original request.
+
+    Parameters
+    ----------
+    name
+        The instance name.
+    """
+    _set_state(name, "stopped")
+
+
+@app.command
+def start(name: str):
+    """Start a stopped instance again, by re-sending its original request.
+
+    Parameters
+    ----------
+    name
+        The instance name.
+    """
+    _set_state(name, "started")
+
+
 def _make_allocatable(software: str | None, pinned: str | None) -> None:
     config = _config()
     sw = config.software_named(software)
