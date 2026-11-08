@@ -108,7 +108,9 @@ def test_port(recipe):
     assert "release = bash scripts/setup.sh && echo ready\n" in cfg
     assert "web = python -m cal --port $PORT\n" in cfg
     assert "mailer = cal-mailer\n" in cfg
-    assert "${" not in cfg.replace("${:_profile_base_location_}", "").replace("${postgresql:location}", "")
+    assert "  HOP3_BACKEND_URL=$${app-parameters:url}\n" in cfg
+    instance_reference = "$${app-parameters:url}"
+    assert "${" not in cfg.replace("${:_profile_base_location_}", "").replace("${postgresql:location}", "").replace(instance_reference, "")
     assert "nodejs" not in cfg and "egg =" not in cfg
     assert release.notes == [
         "[admin] email: admin@cal.invalid, unless HOP3_ADMIN_EMAIL is an instance parameter",

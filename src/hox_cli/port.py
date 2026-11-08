@@ -90,8 +90,12 @@ class Release:
     venv: bool = False  # installed by pip in a venv of its own, not as eggs by buildout
     requirements: str = ""  # for the venv: the pins with their hashes
     uploaded_prior_to: str = ""  # for the venv: what its packages' builds may fetch
-    # What Hop3 gives every app, then what the recipe asks for.
-    environment: list[str] = field(default_factory=lambda: ["HOST_NAME=$DOMAIN", "HOP3_PUBLIC_URL=$URL"])
+    # What Hop3 gives every app, the address the node's health promise uses
+    # (an app that checks the Host header has to trust it), then what the
+    # recipe asks for. $${...}: substituted in the instance, not at build time.
+    environment: list[str] = field(
+        default_factory=lambda: ["HOST_NAME=$DOMAIN", "HOP3_PUBLIC_URL=$URL", "HOP3_BACKEND_URL=$${app-parameters:url}"]
+    )
     secrets: list[str] = field(default_factory=list)
     volumes: list[str] = field(default_factory=list)  # "name target"
     processes: dict[str, list[str]] = field(default_factory=dict)  # name: its commands
