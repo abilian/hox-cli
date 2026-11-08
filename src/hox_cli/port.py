@@ -44,6 +44,7 @@ PIP_INSTALL = "pip install -r requirements.txt"
 
 # The build commands that need Node (SBE's version, already in the node's shared parts).
 NODE_COMMAND = re.compile(r"(\w+=\S*\s+)*(npm|npx|node)\b")
+COMPOSER_COMMAND = re.compile(r"(\w+=\S*\s+)*composer\b")
 NODE_VERSION = "24.11.0"
 # SlapOS's Go components, oldest first: an app gets the first that its go.mod allows.
 GO_VERSIONS = ("1.23", "1.24", "1.26")
@@ -102,6 +103,7 @@ class Release:
     health: str | None = None
     database: bool = False
     mariadb: bool = False
+    composer: bool = False  # the build runs composer: stack/hop3/composer.cfg
     notes: list[str] = field(default_factory=list)  # what wasn't mapped, or needs a look
 
 
@@ -203,6 +205,7 @@ def _build(release: Release, build: dict) -> None:
     release.commands = (_commands(build.get("before-build")) + ([] if toolchain == "python" else install)
                         + _commands(build.get("after-build")))
     release.node = toolchain == "node" or any(NODE_COMMAND.match(c) for c in release.commands)
+    release.composer = toolchain == "php" and any(COMPOSER_COMMAND.match(c) for c in release.commands)
     if toolchain == "php":
         release.processes |= {"fpm": ["hop3-php-fpm"], "web": ["hop3-php-web"]}
         release.environment.append("PHPRC=${hop3-php-ini:output}")
@@ -229,13 +232,15 @@ def _env(release: Release, env: dict) -> None:
 
 def _secret(release: Release, key: str, spec: dict) -> None:
     kind = spec["generate"]
+    if "prefix" in spec:  # the stack's secret under its own name, the app's variable built from it
+        secret = f"HOP3_SECRET_{key}"
+        release.environment.append(f"{key}={_shell(spec['prefix'] + '$' + secret)}")
+        key, spec = secret, {k: v for k, v in spec.items() if k != "prefix"}
     release.secrets.append(f"{key}:{kind}" if kind in ENCODED_SECRETS else key)
     if kind not in ENCODED_SECRETS | {"password"}:
         release.notes.append(f"[env] {key}: generated as a 32-character password, not {kind!r}")
     elif kind != "password" and spec.get("length", 32) != 32:
         release.notes.append(f"[env] {key}: generated from 32 bytes, not {spec['length']}")
-    if "prefix" in spec:
-        release.notes.append(f"[env] {key}: its prefix {spec['prefix']!r} is left out")
 
 
 def _run(release: Release, run: dict) -> None:
@@ -327,6 +332,7 @@ def software_cfg(release: Release) -> str:
         *(f"  ../../component/{c}/buildout.cfg" for c in _components(release)),
         "  ../../stack/hop3/buildout.cfg",
         *(["  ../../stack/hop3/php.cfg"] if release.toolchain == "php" else []),
+        *(["  ../../stack/hop3/composer.cfg"] if release.composer else []),
         *(["  ../../stack/python-app/venv.cfg", "  ../../stack/hop3/venv.cfg"] if release.venv
           else ["  ./versions.cfg"] if release.pins else []),
         "",
@@ -425,6 +431,7 @@ def _tools(release: Release) -> str:
     tools = [f"${{golang{release.go}:location}}/bin"] if release.go else []
     tools += ["${nodejs:location}/bin"] if release.node else []
     tools += ["${gcc:prefix}/bin", "${binutils:location}/bin"] if release.toolchain == "node" else []
+    tools += ["${hop3-composer:location}"] if release.composer else []
     tools += ["${hop3-php:tools}"] if release.toolchain == "php" else []
     return ":".join([*tools, "${:base-tools}"])
 

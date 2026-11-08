@@ -462,6 +462,24 @@ def test_port_php_app_runs_php_fpm_behind_nginx(go_app):
     assert "tools = ${hop3-php:tools}:${:base-tools}\n" in cfg
     assert "  PHPRC=${hop3-php-ini:output}\n" in cfg
     assert "postgresql-bin = ${postgresql:location}/bin\n" in cfg
+    assert "composer" not in cfg
+
+
+def test_port_php_app_built_with_composer_gets_composer(go_app):
+    (go_app / "hop3.toml").write_text(PHP_APP.replace('build = "true"', 'build = "composer install --no-dev"'))
+    cfg = software_cfg(port(go_app, "3.13", _no_pypi))
+    assert "  ../../stack/hop3/php.cfg\n  ../../stack/hop3/composer.cfg\n" in cfg
+    assert "  composer install --no-dev\n" in cfg
+    assert "tools = ${hop3-composer:location}:${hop3-php:tools}:${:base-tools}\n" in cfg
+
+
+def test_port_secret_prefix_is_added_in_the_environment(go_app):
+    (go_app / "hop3.toml").write_text(
+        PHP_APP + '\n[env]\nAPP_KEY = { generate = "base64", length = 32, prefix = "base64:" }\n')
+    release = port(go_app, "3.13", _no_pypi)
+    assert "HOP3_SECRET_APP_KEY:base64" in release.secrets
+    assert 'APP_KEY="base64:$HOP3_SECRET_APP_KEY"' in release.environment
+    assert not release.notes
 
 
 def test_port_mysql_addon_is_mariadb_in_the_partition(go_app):
