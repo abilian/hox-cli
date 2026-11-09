@@ -47,6 +47,8 @@ hox deploy my-app
 
 The documentation is in [`docs/src/`](docs/src/index.md): getting started, guides, the [command reference](docs/src/reference/cli.md), the [`hox.toml` reference](docs/src/reference/config.md) and a [glossary](docs/src/reference/glossary.md) of SlapOS terms. To read it as a site: `cd docs && make serve`.
 
+[`example/`](example/) holds the configuration of a real deployment: 21 applications on one node, 18 of them ported from the Hop3 catalog.
+
 The design notes are in [`notes/`](notes/).
 
 ## Development

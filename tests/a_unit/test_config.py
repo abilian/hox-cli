@@ -93,6 +93,13 @@ def test_example_config_is_valid():
     assert [c.name for c in sw.checks] == ["backend", "frontend", "CORS"]
 
 
+def test_deployment_example_is_valid():
+    example = Path(__file__).parents[2] / "example" / "hox.toml"
+    config = parse(tomllib.loads(example.read_text()), ROOT)
+    assert len(config.software) == 21
+    assert all(sw.checks for sw in config.software.values())
+
+
 def test_only_ssh_file_options_are_paths(config_data):
     config_data["node"]["ssh"] = [
         "ssh",
