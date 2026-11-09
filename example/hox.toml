@@ -1,0 +1,556 @@
+# The hox.toml that built and deployed 21 applications on one SlapOS compute
+# node on Rapid.Space, in November 2026: three apps on the python-app stack,
+# and 18 apps of the Hop3 catalog ported with `hox port`. See README.md.
+#
+# Copy it to the root of a workspace that holds a clone of
+# abilian/slapos_abilian_edge in `slapos/`: hox looks for hox.toml in the
+# current directory and its parents, and relative paths (`checkout`, ssh's
+# -F) resolve against the file's directory.
+#
+# Values to replace with yours: [project] reference, [node] title and ssh,
+# and every `instance` name (names are per project).
+
+[master]
+url = "https://slap.vifib.com/"
+# Client certificate, from `slapos configure client`.
+cert = "~/.slapos/client.crt"
+key = "~/.slapos/client.key"
+# Rapid.Space's API serves slap.vifib.com's certificate: verify it under that name.
+api_tls_name = "slap.vifib.com"
+
+[project]
+reference = "PROJ-20261026.009-F09D5B"  # ours: yours is in the panel
+
+[node]
+# Our node's title on the master. hox looks its reference up by title, so a
+# node registered again (a new reference) needs no change here.
+title = "hox-node"
+# Root on the node through a jump host, configured in an ssh_config next to
+# this file. hox appends the command to run.
+ssh = ["ssh", "-F", "node-deployer/ssh_config", "-o", "LogLevel=ERROR", "hox-node"]
+# For `hox re6st-token` only: Rapid.Space's re6st registry.
+re6st_project = "PROJ-112"
+re6st_release = "https://lab.nexedi.com/nexedi/slapos/-/raw/1.0.404/software/re6stnet/software.cfg"
+
+# Every table below has the same seven keys:
+# - repo, branch, path: the release URL the node fetches,
+#   https://raw.githubusercontent.com/<repo>/<branch>/<path>;
+# - checkout: a local clone of repo, for the git checks (pushed? served?);
+# - software_type: almost always "default";
+# - product: the Software Product's title; `hox setup` creates it and an
+#   Allocation Supply titled "<product> on <node title>";
+# - instance: the instance's name. An instance stays on the node and URL it
+#   was first requested with: a new node or a new URL means a new name.
+#
+# Then the checks, run with curl on the node by `hox check`, `hox rebuild` and
+# `hox deploy`. Each software checks the same page on the backend (the
+# partition's address, over re6st) and on the frontend (the public https
+# address): the first shows the app runs, the second that Rapid.Space routes
+# to it. hox doesn't follow redirects, so a check names the page a redirect
+# would land on.
+
+
+# ===========================================================================
+# Apps on the python-app stack (stack/python-app/), written by hand
+# ===========================================================================
+
+# mynij-proxy: a small Flask proxy, the first app ported. Branch python-app.
+[software.mynij-proxy]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "python-app"
+path = "software/mynij-proxy/software.cfg"
+software_type = "default"
+product = "mynij-proxy"
+instance = "mynij-proxy-5"
+
+[[software.mynij-proxy.checks]]
+name = "backend ping"
+url = "{backend-url}/ping"
+expect_status = 200
+
+[[software.mynij-proxy.checks]]
+name = "frontend ping"
+url = "{url}/ping"
+expect_status = 200
+
+# The proxy's reason to exist: it answers with the CORS header.
+[[software.mynij-proxy.checks]]
+name = "CORS"
+url = "{backend-url}/proxy?url=https://example.org/"
+headers = { Origin = "https://example.org" }
+expect_header = { access-control-allow-origin = "https://example.org" }
+
+# Abilian SBE: a large Flask/PostgreSQL collaborative app.
+[software.abilian-sbe]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/abilian-sbe/software.cfg"
+software_type = "default"
+product = "abilian-sbe"
+instance = "abilian-sbe-1"
+# Three setup jobs that run at each start from etc/service and exit when done:
+# without this list, `hox instances` would count them as down.
+one_shot = ["sbe_assets", "sbe_create_admin", "sbe_initdb"]
+
+# SBE serves only its frontend's domain (FLASK_SERVER_NAME): its backend
+# answers 404 to its own address, which still shows gunicorn is up.
+[[software.abilian-sbe.checks]]
+name = "backend"
+url = "{backend-url}/"
+expect_status = 404
+
+[[software.abilian-sbe.checks]]
+name = "frontend"
+url = "{url}/"
+expect_status = 200
+
+# AIPress24: a Flask app, deployed blank (empty database, no S3, mail or
+# Stripe).
+[software.aipress24]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/aipress24/software.cfg"
+software_type = "default"
+product = "aipress24"
+instance = "aipress24-2"
+
+# Instance parameters, exported to the app's processes under these names, as
+# `hop3 config set` would. Sent with every `hox request` and `hox deploy`. The
+# master stores them in clear, and the project's members see them in the
+# panel. Our real values are not in this example.
+[software.aipress24.parameters]
+FLASK_MAIL_DEFAULT_SENDER = "contact@example.org"
+FLASK_BOOTSTRAP_ADMIN_EMAIL = "admin@example.org"
+FLASK_BOOTSTRAP_ADMIN_PASSWORD = "change-me"
+
+# The health page queries the users table: the app and its database are up.
+[[software.aipress24.checks]]
+name = "backend health"
+url = "{backend-url}/system/health"
+expect_status = 200
+
+[[software.aipress24.checks]]
+name = "frontend health"
+url = "{url}/system/health"
+expect_status = 200
+
+
+# ===========================================================================
+# Hop3 catalog apps, ported with `hox port` onto stack/hop3/
+# (branch hop3-experiment). A name ending in -source, -deny or -current is a
+# catalog variant of the golden recipe: see notes/02-hop3-compat.md.
+# ===========================================================================
+
+# --- Python ----------------------------------------------------------------
+
+# Radicale: CalDAV/CardDAV server, from the recipe's requirements.txt.
+[software.radicale]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/radicale/software.cfg"
+software_type = "default"
+product = "radicale"
+instance = "radicale-1"
+
+# The web interface; signing in needs the generated admin password.
+[[software.radicale.checks]]
+name = "backend web"
+url = "{backend-url}/.web/"
+expect_status = 200
+
+[[software.radicale.checks]]
+name = "frontend web"
+url = "{url}/.web/"
+expect_status = 200
+
+# Bugsink: error tracking (Sentry-compatible), with PostgreSQL and a worker.
+[software.bugsink]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/bugsink/software.cfg"
+software_type = "default"
+product = "bugsink"
+instance = "bugsink-1"
+
+# The login page, as Hop3's healthcheck: it needs the app and its database.
+[[software.bugsink.checks]]
+name = "backend login"
+url = "{backend-url}/accounts/login/"
+expect_status = 200
+
+[[software.bugsink.checks]]
+name = "frontend login"
+url = "{url}/accounts/login/"
+expect_status = 200
+
+# Isso: a comment server, installed from its source (`hox port --source`),
+# with its JavaScript built by Node.
+[software.isso]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/isso/software.cfg"
+software_type = "default"
+product = "isso"
+instance = "isso-1"
+
+# The admin's login form, as Hop3's healthcheck: the comment API at / answers 400.
+[[software.isso.checks]]
+name = "backend admin"
+url = "{backend-url}/admin/"
+expect_status = 200
+
+[[software.isso.checks]]
+name = "frontend admin"
+url = "{url}/admin/"
+expect_status = 200
+
+# The same app ported with `hox port --venv`: pip in a dedicated venv, its
+# compiled packages built from source, where isso above uses buildout's eggs.
+[software.isso-venv]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/isso-venv/software.cfg"
+software_type = "default"
+product = "isso-venv"
+instance = "isso-venv-1"
+
+[[software.isso-venv.checks]]
+name = "backend"
+url = "{backend-url}/admin/"
+expect_status = 200
+
+[[software.isso-venv.checks]]
+name = "frontend"
+url = "{url}/admin/"
+expect_status = 200
+
+# --- Go --------------------------------------------------------------------
+
+# Miniflux: a feed reader, built with make and SlapOS's Go, with PostgreSQL.
+[software.miniflux]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/miniflux/software.cfg"
+software_type = "default"
+product = "miniflux"
+instance = "miniflux-1"
+
+[[software.miniflux.checks]]
+name = "backend"
+url = "{backend-url}/healthcheck"
+expect_status = 200
+
+[[software.miniflux.checks]]
+name = "frontend"
+url = "{url}/healthcheck"
+expect_status = 200
+
+# Gitea, built from its source release: the golden recipe downloads a binary.
+[software.gitea-source]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/gitea-source/software.cfg"
+software_type = "default"
+product = "gitea-source"
+instance = "gitea-source-1"
+
+[[software.gitea-source.checks]]
+name = "backend"
+url = "{backend-url}/"
+expect_status = 200
+
+[[software.gitea-source.checks]]
+name = "frontend"
+url = "{url}/"
+expect_status = 200
+
+# Forgejo, built from source. Its go.mod asks for Go 1.25, which SlapOS
+# lacks, so `hox port --source` picked the 1.26 component.
+[software.forgejo-source]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/forgejo-source/software.cfg"
+software_type = "default"
+product = "forgejo-source"
+instance = "forgejo-source-1"
+
+[[software.forgejo-source.checks]]
+name = "backend"
+url = "{backend-url}/api/healthz"
+expect_status = 200
+
+[[software.forgejo-source.checks]]
+name = "frontend"
+url = "{url}/api/healthz"
+expect_status = 200
+
+# Vikunja: a to-do app, built from source, its frontend (pnpm) embedded in the
+# binary. The build peaks at 3.7 GB: run it alone on a small node.
+[software.vikunja-source]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/vikunja-source/software.cfg"
+software_type = "default"
+product = "vikunja-source"
+instance = "vikunja-source-1"
+
+[[software.vikunja-source.checks]]
+name = "backend"
+url = "{backend-url}/api/v1/info"
+expect_status = 200
+
+[[software.vikunja-source.checks]]
+name = "frontend"
+url = "{url}/api/v1/info"
+expect_status = 200
+
+# Mattermost: team chat, built from source (Go server, webpack frontend).
+[software.mattermost-source]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/mattermost-source/software.cfg"
+software_type = "default"
+product = "mattermost-source"
+instance = "mattermost-source-1"
+
+[[software.mattermost-source.checks]]
+name = "backend"
+url = "{backend-url}/api/v4/system/ping"
+expect_status = 200
+
+[[software.mattermost-source.checks]]
+name = "frontend"
+url = "{url}/api/v4/system/ping"
+expect_status = 200
+
+# --- Node ------------------------------------------------------------------
+
+# Uptime Kuma: uptime monitoring, with a native SQLite module compiled on the node.
+[software.uptime-kuma]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/uptime-kuma/software.cfg"
+software_type = "default"
+product = "uptime-kuma"
+instance = "uptime-kuma-1"
+
+[[software.uptime-kuma.checks]]
+name = "backend"
+url = "{backend-url}/dashboard"
+expect_status = 200
+
+[[software.uptime-kuma.checks]]
+name = "frontend"
+url = "{url}/dashboard"
+expect_status = 200
+
+# --- PHP (php-fpm behind nginx, PHP 8.3) ------------------------------------
+# nginx doesn't read the .htaccess files PHP apps rely on, so the -deny
+# variants add a [proxy] deny list, and some checks test that a protected
+# path answers 404.
+
+# Paheko: association management, with SQLite.
+[software.paheko]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/paheko/software.cfg"
+software_type = "default"
+product = "paheko"
+instance = "paheko-2"
+
+[[software.paheko.checks]]
+name = "backend"
+url = "{backend-url}/admin/login.php"
+expect_status = 200
+
+[[software.paheko.checks]]
+name = "frontend"
+url = "{url}/admin/login.php"
+expect_status = 200
+
+# Dolibarr: ERP and CRM, with PostgreSQL.
+[software.dolibarr]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/dolibarr/software.cfg"
+software_type = "default"
+product = "dolibarr"
+instance = "dolibarr-1"
+
+[[software.dolibarr.checks]]
+name = "backend"
+url = "{backend-url}/"
+expect_status = 200
+
+[[software.dolibarr.checks]]
+name = "frontend"
+url = "{url}/"
+expect_status = 200
+
+# LimeSurvey: surveys, with PostgreSQL.
+[software.limesurvey-deny]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/limesurvey-deny/software.cfg"
+software_type = "default"
+product = "limesurvey-deny"
+instance = "limesurvey-1"
+
+[[software.limesurvey-deny.checks]]
+name = "backend"
+url = "{backend-url}/"
+expect_status = 200
+
+[[software.limesurvey-deny.checks]]
+name = "frontend"
+url = "{url}/"
+expect_status = 200
+
+# Kanboard: kanban boards, with MariaDB.
+[software.kanboard-deny]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/kanboard-deny/software.cfg"
+software_type = "default"
+product = "kanboard-deny"
+instance = "kanboard-1"
+
+# / redirects (302) to this page.
+[[software.kanboard-deny.checks]]
+name = "backend"
+url = "{backend-url}/?controller=AuthController&action=login"
+expect_status = 200
+
+[[software.kanboard-deny.checks]]
+name = "frontend"
+url = "{url}/?controller=AuthController&action=login"
+expect_status = 200
+
+# Task attachments live under /data, which only the deny list protects.
+[[software.kanboard-deny.checks]]
+name = "attachments denied"
+url = "{url}/data/"
+expect_status = 404
+
+# WordPress, with MariaDB, pinned (automatic updates off) and with its URL
+# from the platform, not from the request's Host header.
+[software.wordpress-deny]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/wordpress-deny/software.cfg"
+software_type = "default"
+product = "wordpress-deny"
+instance = "wordpress-1"
+
+# Over plain http the login page redirects to the site's https URL: the
+# backend check says it came through https, as the frontend would.
+[[software.wordpress-deny.checks]]
+name = "backend"
+url = "{backend-url}/wp-login.php"
+headers = { "X-Forwarded-Proto" = "https" }
+expect_status = 200
+
+[[software.wordpress-deny.checks]]
+name = "frontend"
+url = "{url}/wp-login.php"
+expect_status = 200
+
+[[software.wordpress-deny.checks]]
+name = "recipe files denied"
+url = "{url}/scripts/setup-config.sh"
+expect_status = 404
+
+# Matomo: web analytics, with MariaDB.
+[software.matomo-deny]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/matomo-deny/software.cfg"
+software_type = "default"
+product = "matomo-deny"
+instance = "matomo-1"
+
+[[software.matomo-deny.checks]]
+name = "backend"
+url = "{backend-url}/"
+expect_status = 200
+
+[[software.matomo-deny.checks]]
+name = "frontend"
+url = "{url}/"
+expect_status = 200
+
+[[software.matomo-deny.checks]]
+name = "config denied"
+url = "{url}/config/config.ini.php"
+expect_status = 404
+
+# Nextcloud: files and collaboration, with MariaDB. The variant trusts the
+# backend address too, which the node's health promise sends as the Host.
+[software.nextcloud-deny]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/nextcloud-deny/software.cfg"
+software_type = "default"
+product = "nextcloud-deny"
+instance = "nextcloud-1"
+
+[[software.nextcloud-deny.checks]]
+name = "backend"
+url = "{backend-url}/status.php"
+expect_status = 200
+
+[[software.nextcloud-deny.checks]]
+name = "frontend"
+url = "{url}/status.php"
+expect_status = 200
+
+[[software.nextcloud-deny.checks]]
+name = "config denied"
+url = "{url}/config/config.php"
+expect_status = 404
+
+# BookStack: a wiki, with MariaDB and composer. The -current variant moves to
+# a recent release. It serves public/ only, so it needs no deny list.
+[software.bookstack-current]
+repo = "abilian/slapos_abilian_edge"
+checkout = "slapos"
+branch = "hop3-experiment"
+path = "software/bookstack-current/software.cfg"
+software_type = "default"
+product = "bookstack-current"
+instance = "bookstack-1"
+
+[[software.bookstack-current.checks]]
+name = "backend"
+url = "{backend-url}/login"
+expect_status = 200
+
+[[software.bookstack-current.checks]]
+name = "frontend"
+url = "{url}/login"
+expect_status = 200
+
+[[software.bookstack-current.checks]]
+name = "env denied"
+url = "{url}/.env"
+expect_status = 404
