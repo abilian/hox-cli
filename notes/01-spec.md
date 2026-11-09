@@ -153,7 +153,7 @@ Both met by 2026-10-31:
 ```
 hox-cli/
   pyproject.toml
-  hox.example.toml  # commented copy of the workspace's hox.toml, parsed by a test
+  hox.example.toml  # generic commented example (one my-app), parsed by a test
   notes/01-spec.md
   src/hox_cli/
     cli.py        # cyclopts app, one function per command, output formatting
@@ -176,7 +176,7 @@ Split further only if a module grows past a few hundred lines. `cli.py` (700 lin
 
 ### 2.3 Configuration
 
-`hox.toml`, found in the current directory or its parents (the workspace root holds ours; `hox.example.toml` is a commented copy), or given with `--config`. Parsed once into frozen dataclasses; unknown keys and missing required keys are errors at startup.
+`hox.toml`, found in the current directory or its parents (the workspace root holds ours; `hox.example.toml` is a generic commented example), or given with `--config`. Parsed once into frozen dataclasses; unknown keys and missing required keys are errors at startup.
 
 ```toml
 [master]

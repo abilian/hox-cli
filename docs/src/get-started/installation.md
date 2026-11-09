@@ -12,7 +12,7 @@
 ## Install
 
 ```
-git clone https://git.sr.ht/~sfermigier/hox-cli
+git clone https://github.com/abilian/hox-cli
 uv tool install --editable ./hox-cli
 hox --help
 ```

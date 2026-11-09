@@ -6,8 +6,9 @@ site_description = "Drive SlapOS on Rapid.Space from the terminal: build, deploy
 site_author = "Abilian SAS"
 docs_dir = "src"
 site_dir = "site"
-repo_url = "https://git.sr.ht/~sfermigier/hox-cli"
-repo_name = "~sfermigier/hox-cli"
+repo_url = "https://github.com/abilian/hox-cli"
+repo_name = "abilian/hox-cli"
+edit_uri = "edit/main/docs/src"
 copyright = "Copyright &copy; 2026 Abilian SAS"
 
 nav = [
@@ -43,6 +44,7 @@ nav = [
 variant = "modern"
 language = "en"
 features = [
+    "content.action.edit",
     "content.code.copy",
     "navigation.footer",
     "navigation.instant",
@@ -71,7 +73,7 @@ toggle.name = "Switch to light mode"
 
 [project.theme.icon]
 # Lucide has no brand icons: the default repository icon would fail the build.
-repo = "fontawesome/brands/git-alt"
+repo = "fontawesome/brands/github"
 
 [project.plugins]
 search = { enabled = true }

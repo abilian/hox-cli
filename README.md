@@ -1,53 +1,64 @@
 # hox-cli
 
-`hox` drives our SlapOS work on Rapid.Space (master, project, compute node) from the terminal. Like the `slapos` client, it supplies software releases and requests instances. You stop, start or destroy an instance by its name alone, where the `slapos` client needs its release URL, type and node repeated exactly. It also does what the client can't: the setup you would otherwise do in the web panel, and the builds, logs and checks on your node. With it, building, deploying and checking a software release never needs the web panel. Spec: `notes/01-spec.md`; porting Hop3 apps: `notes/02-hop3-compat.md`.
+`hox` is a command-line tool for deploying your applications on [SlapOS](https://slapos.nexedi.com), the open-source cloud system made by Nexedi, and for working on them once they run. It works with [Rapid.Space](https://rapid.space)'s public SlapOS cloud and a compute node of your own.
 
-## Install and run
+You describe your applications in one configuration file, `hox.toml`. From then on, deploying, updating and checking them takes one command each, with no web forms to fill in:
+
+- **Deploy in one command.** `hox deploy` does the web panel's setup for you, asks the master for an instance, waits for the node to build and start it, then checks that the application answers.
+- **Update after each change.** Push to Git, then `hox rebuild`: it rebuilds the application on the node, redeploys it and runs your checks.
+- **Know what's going on.** `hox status` gathers what the master, the node and GitHub know: whether a build failed and why, which processes are down, why an instance hasn't started.
+- **Manage instances by name.** Stop, start or destroy an instance by name alone, where SlapOS's `slapos` command needs its release URL, type and node repeated exactly.
+- **Bring Hop3 apps to SlapOS.** `hox port` turns an app of the [Hop3](https://hop3.cloud) catalog into a SlapOS software release.
+
+## Install
+
+You need Python 3.12 or later and [uv](https://docs.astral.sh/uv/).
 
 ```
-uv tool install --editable ./hox-cli      # from the workspace root
-hox status                                # reads ../hox.toml (searched upward from the current directory)
+git clone https://github.com/abilian/hox-cli
+uv tool install --editable ./hox-cli
+hox --help
 ```
 
-Without installing: `uv run --project hox-cli hox status`.
+## Quick start
 
-## Configuration
+1. Get a SlapOS client certificate for your Rapid.Space account (`slapos configure client`), and root SSH access to your compute node.
+2. Copy `hox.example.toml` to `hox.toml` at the root of your workspace, and fill in your project, node and software release.
+3. Check that `hox` reaches the master and the node, then deploy:
 
-`hox` reads the first `hox.toml` in the current directory or its parents: the HOX workspace keeps its own at the root, next to the checkouts it names. `hox.example.toml` is a commented copy of it (a test parses it, so it stays valid); start from it to set up another workspace. `--config PATH` names another file.
-
-Every command fails with a one-line message and exit 1 when the master, the node or git says no; `--debug` shows the traceback instead.
+```
+hox status
+hox deploy my-app
+```
 
 ## Commands
 
-- `hox instances [-l] [--json]`: the project's instances: status, memory and frontend URL. `--long` adds their software in `hox.toml`, release and partition. Status comes from the node: `up` (its processes run: `hox check` tests that the app answers), `N down`, `not running` (all of them, as while the node boots), `no services`, `not allocated`, `stopped`, `being destroyed`. With the node unreachable, the list still prints, with `unknown`. A service that exits once its work is done belongs in `etc/run`; one left in `etc/service` goes in `one_shot` of `[software.<name>]`, or it counts as down.
-- `hox status [--json]`: the whole system: the node's uptime, partitions used and free, memory and disk, the builds that aren't complete, the failing promises, the services down, the software of `hox.toml` with no instance, then the instances.
-- `hox status NAME [--json]`: one software in detail, named as in `hox.toml` or by its instance: instance, partition (or why it isn't allocated), services running and down, memory, connection parameters, frontends, builds on the node, failing promises, whether GitHub serves the pushed commit.
-- `hox rebuild [SOFTWARE] [--software-only] [--no-wait]`: the dev loop. Refuses an unpushed branch, waits for raw.githubusercontent.com to serve the pushed files, rebuilds the branch URL in place on the node, redeploys, runs the checks.
-- `hox try-start SOFTWARE [--timeout 300]`: start a test build's real processes on the node (from `/srv/hox-dev/<software>`, as `run-build.sh` left it), in a temporary directory with their haproxy and a PostgreSQL of their own, and stop at the first failure with the logs. It finds in a minute what a deploy finds after its checks time out. No frontend or instance parameters, so it doesn't replace testing through the frontend.
-- `hox build-report [SOFTWARE]`: Markdown report of the software's builds on the node, from its software logs (14 days kept): each run of each release URL (start, end, duration, result), the longest parts, release and shared part sizes, disk used.
-- `hox versions [LOCK_FILE] [--python 3.12]`: a buildout `[versions]` section from a project's `uv.lock` (default `./uv.lock`): its run-time dependencies with their markers evaluated for Linux x86_64, as `:whl` when there is a wheel the node can install (pure, or manylinux x86_64 for that Python), and comments listing those from binary wheels (their C libraries bundled), those buildout must build from their sdist, and those it can't install at all. Leaves out buildout's own tools (pip, setuptools, wheel, zc.buildout). Needs no `hox.toml`.
-- `hox port RECIPE SLAPOS [--python 3.13] [--source DIR] [--venv]`: a SlapOS software release from a Hop3 recipe (a catalog app's directory, with its `hop3.toml`), on the hop3 stack of `slapos_abilian_edge` (branch `hop3-experiment`). Writes `SLAPOS/software/<app id>/`: a `software.cfg`, the recipe's files in `hop3/` (without the catalog's overlay: `catalog.toml`, readmes, icon, screenshots, `check.py`), and for a Python app a `versions.cfg` from its `requirements.txt` (wheels looked up on PyPI). Toolchains: python, go, node, php (php-fpm behind nginx, composer when the build runs it) and generic (a prebuilt binary, marked provisional); addons: postgres, and mysql as MariaDB. `--source`: an unpacked copy of the app, for one installed from its source (no `requirements.txt`; dependencies resolved with `uv`) or to recognise a Go app by its `go.mod`. `--venv`: a Python app installed by pip in a venv of its own, into `software/<app id>-venv/`. Lists what it couldn't map; refuses other builders than local, and overwrites only a release it wrote. Needs `uv`, no `hox.toml`. How a recipe maps to SlapOS: `notes/02-hop3-compat.md`.
-- `hox check [SOFTWARE]`: the checks of hox.toml, with curl on the node. Exit 1 if one fails.
-- `hox logs {software,instance,app} [--software NAME] [-f] [-n N]`: tail slapgrid's logs or the instance's service logs.
-- `hox supply [SOFTWARE] [--pinned COMMIT] [--remove]`: supply (or remove) the branch or a pinned URL on our node.
-- `hox request [SOFTWARE] [--name NAME] [--pinned COMMIT] [--replace] [--yes]`: request the instance; re-requesting re-sends the original request, with the parameters of `[software.<name>.parameters]` in hox.toml if it has that table. `--replace` destroys an instance on another URL and requests the next name.
-- `hox destroy NAME [--yes]`: destroy an instance.
-- `hox stop NAME`, `hox start NAME`: stop an instance's processes and keep its data, or start them again.
-- `hox deploy [SOFTWARE]`: from nothing on the master to an instance that passes its checks: `setup`, `request`, then waits for the allocation, the node's build (hours for SBE on a cold cache) and the checks (frontends take a while). Run it again after a failure.
-- `hox node-certificate`: print the compute node's (`[node] title`) reference, certificate and key as JSON, for `node-deployer/deploy.py`. Creates the node if needed; otherwise revokes its certificate for a new one, which cuts off a node still configured with the old one.
-- `hox re6st-token`: print the node's re6st token (the same one each time; 10+ minutes the first time). Only the token goes to stdout.
-- `hox setup [SOFTWARE]`: the one-time panel work for the branch URL: node allocation scope open, Software Product, software type, release, Allocation Supply on our node with the cell ticked, validated; then supplies the URL. Skips what exists.
-- `hox release COMMIT [--software NAME]`: the same for a pushed commit's pinned URL (full SHA). Doesn't move the instance.
-- `hox api get RELATIVE_URL [--view VIEW]`, `hox api search QUERY [--select FIELD …] [--limit N]`: raw read-only access to the master's API.
+| | |
+|---|---|
+| Seeing | `instances`, `status`, `check`, `logs`, `build-report`, `api get`, `api search` |
+| Developing | `rebuild`, `try-start` |
+| Deploying | `deploy`, `setup`, `release`, `supply`, `request`, `stop`, `start`, `destroy` |
+| Setting up a node | `node-certificate`, `re6st-token` |
+| Offline tools | `versions` (buildout pins from a `uv.lock`), `port` (a SlapOS release from a Hop3 recipe) |
 
-## Tests
+`hox COMMAND --help` describes each one.
+
+## Documentation
+
+The documentation is in [`docs/src/`](docs/src/index.md): getting started, guides, the [command reference](docs/src/reference/cli.md), the [`hox.toml` reference](docs/src/reference/config.md) and a [glossary](docs/src/reference/glossary.md) of SlapOS terms. To read it as a site: `cd docs && make serve`.
+
+The design notes are in [`notes/`](notes/).
+
+## Development
 
 ```
-cd hox-cli
-uv run pytest                               # or: make test
-uv run pytest tests/a_unit                  # one tier: a_unit, b_integration, c_e2e
-uv run pytest tests/a_unit/test_port.py -k venv   # a subset
-make lint                                   # ruff, ty, pyrefly, mypy
+uv sync
+make test      # all tests; tests/a_unit, tests/b_integration, tests/c_e2e for one tier
+make lint      # ruff, ty, pyrefly, mypy
 ```
 
-The tests need no network, master or node: API replies and node logs are recorded in `tests/fixtures/`.
+The tests need no network, master or node. See [Contributing](docs/src/developers/contributing.md).
+
+## Licence
+
+Apache 2.0: see [LICENSE](LICENSE). `hox` was written by [Abilian](https://abilian.com) for [HyperOpen-X](https://lab.abilian.com/Projects/HOX/), a French public research project on an open, sovereign cloud.

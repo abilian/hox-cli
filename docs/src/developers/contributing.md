@@ -3,7 +3,7 @@
 ## Setup
 
 ```
-git clone https://git.sr.ht/~sfermigier/hox-cli
+git clone https://github.com/abilian/hox-cli
 cd hox-cli
 uv sync
 uv run hox --help
