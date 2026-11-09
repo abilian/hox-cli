@@ -1,4 +1,4 @@
-"""What we did in the panel: tokens for a new node, and making a release URL allocatable on it.
+"""The web panel's work: a new node's certificate and re6st token, and making a release URL allocatable on it.
 
 Every step looks first and acts only when what it needs is missing, so running
 it again is harmless. What it creates shows up in the catalog after a few
@@ -30,11 +30,11 @@ def _project(api: Api, config: Config) -> dict:
 
 
 def node_certificate(api: Api, config: Config) -> dict[str, str]:
-    """Our compute node's reference, certificate and key, to configure it with.
+    """The compute node's reference, certificate and key, to configure it with.
 
     What `slapos node register` gets with a token, without the token: the
     panel's "Add Compute Node Token" works only through panel.rapid.space,
-    which doesn't take our certificate. Creates the node (panel: "Add Compute
+    which doesn't take a client certificate. Creates the node (panel: "Add Compute
     Node") if none has `[node] title`. Otherwise revokes its certificate and
     requests a new one, since the master gives a certificate only once: a node
     still configured with the old one loses access.

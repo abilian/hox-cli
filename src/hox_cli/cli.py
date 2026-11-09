@@ -41,7 +41,10 @@ from .node import (
 )
 from .port import PortError
 
-app = App(name="hox", help="Drive our SlapOS work on Rapid.Space from the terminal.")
+app = App(
+    name="hox",
+    help="Deploy and manage applications on SlapOS (Rapid.Space) from the terminal.",
+)
 api_app = App(name="api", help="Raw, read-only access to the master's API.")
 app.command(api_app)
 
@@ -82,7 +85,7 @@ def get(relative_url: str, *, view: str | None = None):
 def search(
     query: str, *, select: tuple[str, ...] = ("title", "relative_url"), limit: int = 100
 ):
-    """Print catalog search results, e.g. 'portal_type:"Instance Tree" AND title:="mynij-proxy-3"'.
+    """Print catalog search results, e.g. 'portal_type:"Instance Tree" AND title:="my-app-1"'.
 
     Parameters
     ----------
@@ -438,7 +441,7 @@ def rebuild(
     inst = status_module.require_instance(_api(config), sw)
     if inst.partition is None:
         raise DevError(f"{sw.instance} is not allocated yet: `hox status` says why")
-    # Only our partition: another one's failure (a release still building) isn't ours.
+    # Only this instance's partition: another one's failure (a release still building) isn't ours.
     if (
         node.slapgrid(f"instance --force --only-cp {inst.partition}")
         == SLAPGRID_PROMISE_FAIL
@@ -521,7 +524,7 @@ def _confirm(question: str, yes: bool) -> None:
 def supply(
     software: str | None = None, *, pinned: str | None = None, remove: bool = False
 ):
-    """Supply the software release on our node (or remove it).
+    """Supply the software release on your node (or remove it).
 
     Parameters
     ----------
@@ -550,11 +553,11 @@ def request(
     replace: bool = False,
     yes: bool = False,
 ):
-    """Request the instance on our node, with the branch URL or a pinned one.
+    """Request the instance on your node, with the branch URL or a pinned one.
 
     Re-requesting an existing instance re-sends its original request. The master
     refuses to change an instance's URL (HTTP 500): --replace destroys it and
-    requests the next name instead (mynij-proxy-3 -> mynij-proxy-4).
+    requests the next name instead (my-app-1 -> my-app-2).
 
     Parameters
     ----------
@@ -673,10 +676,10 @@ def _make_allocatable(software: str | None, pinned: str | None) -> None:
 
 @app.command
 def setup(software: str | None = None):
-    """One-time project setup: what we did in the panel, for the branch URL.
+    """One-time project setup: the web panel's work, for the branch URL.
 
     Software Product with the software type, branch URL as a release, Allocation
-    Supply on our node with the (release, type) cell ticked and validated, branch
+    Supply on your node with the (release, type) cell ticked and validated, branch
     URL supplied. Each step is skipped when already done.
 
     Parameters
@@ -730,10 +733,10 @@ def deploy(software: str | None = None) -> int:
 
 @app.command
 def node_certificate():
-    """Print our compute node's reference, certificate and key as JSON, creating the node if needed.
+    """Print your compute node's reference, certificate and key as JSON, creating the node if needed.
 
-    The node's title is `[node] title` of hox.toml. node-deployer's deploy.py
-    configures the node with it (SLAPOS_NODE=<the JSON file>). If the node
+    The node's title is `[node] title` of hox.toml. Configure the node with
+    this certificate when you install SlapOS on it. If the node
     exists, its certificate is revoked and a new one issued (the master gives
     a certificate only once): a node configured with the old one loses access.
     """
@@ -743,7 +746,7 @@ def node_certificate():
 
 @app.command
 def re6st_token():
-    """Print the node's re6st token, for node-deployer (RE6ST_TOKEN).
+    """Print the node's re6st token, to install re6st on the node with.
 
     It comes from a shared instance of the re6st registry ("re6st token for
     <node title>"), so asking again gives the same token. The registry takes

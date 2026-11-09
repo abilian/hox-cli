@@ -84,7 +84,7 @@ def deploy(
     """After `hox setup` and `hox request`: allocated, built, deployed, checks passing."""
     partition = wait_allocated(api, sw, out, sleep)
     wait_built(node, url, out, sleep)
-    # Only our partition: another one's failure (a release still building) isn't ours.
+    # Only this instance's partition: another one's failure (a release still building) isn't ours.
     if (
         node.slapgrid(f"instance --force --only-cp {partition}", out)
         == SLAPGRID_PROMISE_FAIL

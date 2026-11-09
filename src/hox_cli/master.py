@@ -258,7 +258,7 @@ def nodes_titled(api: Api, project: str, title: str) -> list[ComputeNode]:
 
 
 def find_node(api: Api, project: str, title: str) -> ComputeNode:
-    """Our compute node, by its title in the project (its reference changes with each registration)."""
+    """The compute node, by its title in the project (its reference changes with each registration)."""
     nodes = nodes_titled(api, project, title)
     if len(nodes) != 1:
         found = f"{len(nodes)} of them" if nodes else "none (`hox node-certificate`)"
@@ -364,7 +364,7 @@ class Slap:
 
 
 def next_name(reference: str) -> str:
-    """mynij-proxy-3 -> mynij-proxy-4; mynij-proxy -> mynij-proxy-2."""
+    """my-app-3 -> my-app-4; my-app -> my-app-2."""
     base, _, number = reference.rpartition("-")
     return (
         f"{base}-{int(number) + 1}" if base and number.isdigit() else f"{reference}-2"
