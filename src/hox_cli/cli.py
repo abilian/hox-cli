@@ -13,6 +13,8 @@ from typing import Annotated, Literal
 
 import httpx2
 from cyclopts import App, Parameter
+from cyclopts.help import DefaultFormatter, PanelSpec
+from rich import box
 
 from . import config as config_module
 from . import deploy as deploy_module
@@ -46,6 +48,10 @@ from .port import PortError
 app = App(
     name="hox",
     help="Deploy and manage applications on SlapOS (Rapid.Space) from the terminal.",
+    # No box around the panels, so the help pastes as plain text.
+    help_formatter=DefaultFormatter(
+        panel_spec=PanelSpec(box=box.SIMPLE_HEAD, padding=(0, 0))
+    ),
 )
 api_app = App(name="api", help="Raw, read-only access to the master's API.")
 app.command(api_app)

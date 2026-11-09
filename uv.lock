@@ -313,6 +313,7 @@ dependencies = [
     { name = "cyclopts" },
     { name = "httpx2" },
     { name = "packaging" },
+    { name = "rich" },
 ]
 
 [package.dev-dependencies]
@@ -334,6 +335,7 @@ requires-dist = [
     { name = "cyclopts", specifier = ">=5.3" },
     { name = "httpx2", specifier = ">=2.16" },
     { name = "packaging", specifier = ">=24" },
+    { name = "rich", specifier = ">=13" },
 ]
 
 [package.metadata.requires-dev]
