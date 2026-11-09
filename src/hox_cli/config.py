@@ -98,20 +98,28 @@ class Config:
     def software_named(self, name: str | None) -> Software:
         if name is None:
             if len(self.software) != 1:
-                raise ConfigError(f"several software in {FILENAME}, name one of: {', '.join(self.software)}")
+                raise ConfigError(
+                    f"several software in {FILENAME}, name one of: {', '.join(self.software)}"
+                )
             return next(iter(self.software.values()))
         if name in self.software:
             return self.software[name]
         for sw in self.software.values():
             if sw.instance == name:
                 return sw
-        raise ConfigError(f"no software or instance {name!r} in {FILENAME} (software: {', '.join(self.software)})")
+        raise ConfigError(
+            f"no software or instance {name!r} in {FILENAME} (software: {', '.join(self.software)})"
+        )
 
     def url_name(self, url: str) -> str:
         """A software release URL as hox.toml knows it ("sbe branch", "sbe @ 971d944c2"), else the URL."""
         for sw in self.software.values():
             if ref := sw.ref_of(url):
-                return f"{sw.name} branch" if ref == sw.branch else f"{sw.name} @ {short_ref(ref)}"
+                return (
+                    f"{sw.name} branch"
+                    if ref == sw.branch
+                    else f"{sw.name} @ {short_ref(ref)}"
+                )
         return url
 
 
@@ -139,10 +147,15 @@ def parse(data: dict, root: Path) -> Config:
 
     def ssh_args(args: tuple[str, ...]) -> tuple[str, ...]:
         # The files of ssh's -F (config) and -i (key) resolve against hox.toml's directory.
-        return tuple(str(resolve(a)) if prev in ("-F", "-i") else a for prev, a in zip(("",) + args, args))
+        return tuple(
+            str(resolve(a)) if prev in ("-F", "-i") else a
+            for prev, a in zip(("",) + args, args)
+        )
 
     master = _build(Master, _table(data, "master"), "master")
-    master = dataclasses.replace(master, cert=resolve(master.cert), key=resolve(master.key))
+    master = dataclasses.replace(
+        master, cert=resolve(master.cert), key=resolve(master.key)
+    )
     project = _build(Project, _table(data, "project"), "project")
     node = _build(Node, _table(data, "node"), "node")
     node = dataclasses.replace(node, ssh=ssh_args(node.ssh))
@@ -152,7 +165,8 @@ def parse(data: dict, root: Path) -> Config:
         ctx = f"software.{name}"
         table = dict(table)
         checks = tuple(
-            _build(Check, c, f"{ctx}.checks[{i}]") for i, c in enumerate(table.pop("checks", []))
+            _build(Check, c, f"{ctx}.checks[{i}]")
+            for i, c in enumerate(table.pop("checks", []))
         )
         if not all(isinstance(v, str) for v in table.get("parameters", {}).values()):
             raise ConfigError(f"[{ctx}.parameters] values must be strings")
@@ -180,7 +194,8 @@ def _build(cls, table: dict, ctx: str):
     if unknown:
         raise ConfigError(f"[{ctx}] unknown keys: {', '.join(sorted(unknown))}")
     required = {
-        n for n, f in fields.items()
+        n
+        for n, f in fields.items()
         if f.default is dataclasses.MISSING and f.default_factory is dataclasses.MISSING
     }
     missing = required - set(table)

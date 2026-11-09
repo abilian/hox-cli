@@ -79,7 +79,9 @@ def get(relative_url: str, *, view: str | None = None):
 
 
 @api_app.command
-def search(query: str, *, select: tuple[str, ...] = ("title", "relative_url"), limit: int = 100):
+def search(
+    query: str, *, select: tuple[str, ...] = ("title", "relative_url"), limit: int = 100
+):
     """Print catalog search results, e.g. 'portal_type:"Instance Tree" AND title:="mynij-proxy-3"'.
 
     Parameters
@@ -113,7 +115,14 @@ def versions(lock_file: Path = Path("uv.lock"), *, python: str = "3.12"):
 
 
 @app.command
-def port(recipe: Path, slapos: Path, *, python: str = "3.13", source: Path | None = None, venv: bool = False):
+def port(
+    recipe: Path,
+    slapos: Path,
+    *,
+    python: str = "3.13",
+    source: Path | None = None,
+    venv: bool = False,
+):
     """Write a SlapOS software release from a Hop3 recipe, on the hop3 stack.
 
     The release goes to <slapos>/software/<app id>/: a software.cfg, a
@@ -169,7 +178,9 @@ def build_report(software: str | None = None):
 
 def _overview(config: Config) -> status_module.Overview:
     api = _api(config)
-    return status_module.overview(config, api, Node(config.node.ssh), _node(config, api).reference)
+    return status_module.overview(
+        config, api, Node(config.node.ssh), _node(config, api).reference
+    )
 
 
 @app.command
@@ -198,7 +209,11 @@ def instances(
 
 
 @app.command
-def status(software: str | None = None, *, json_: Annotated[bool, Parameter(name="--json")] = False):
+def status(
+    software: str | None = None,
+    *,
+    json_: Annotated[bool, Parameter(name="--json")] = False,
+):
     """The whole system, or one software in detail.
 
     Without a name: the node's uptime, partitions, memory and disk, the builds that
@@ -223,7 +238,9 @@ def status(software: str | None = None, *, json_: Annotated[bool, Parameter(name
     sw = config.software_named(software)
     with httpx2.Client(timeout=30) as http:
         api = _api(config)
-        report = status_module.gather(config, sw, api, Node(config.node.ssh), http, _node(config, api).reference)
+        report = status_module.gather(
+            config, sw, api, Node(config.node.ssh), http, _node(config, api).reference
+        )
     if json_:
         _print_json(dataclasses.asdict(report))
     else:
@@ -236,10 +253,19 @@ def format_instances(o: status_module.Overview, *, long: bool = False) -> str:
         memory = "-" if r.memory_mb is None else str(r.memory_mb)
         return (r.instance, *extra, r.status, memory, r.frontend or "-")
 
-    header = ("INSTANCE", *(("SOFTWARE", "RELEASE", "PARTITION") if long else ()), "STATUS", "MB", "FRONTEND")
+    header = (
+        "INSTANCE",
+        *(("SOFTWARE", "RELEASE", "PARTITION") if long else ()),
+        "STATUS",
+        "MB",
+        "FRONTEND",
+    )
     rows = [header, *map(row, o.instances)]
     widths = [max(map(len, column)) for column in zip(*rows)]
-    lines = ["  ".join(cell.ljust(width) for cell, width in zip(r, widths)).rstrip() for r in rows]
+    lines = [
+        "  ".join(cell.ljust(width) for cell, width in zip(r, widths)).rstrip()
+        for r in rows
+    ]
     if o.node_error:
         lines.insert(0, f"node unreachable, so what runs is unknown: {o.node_error}\n")
     return "\n".join(lines)
@@ -255,24 +281,41 @@ def format_overview(o: status_module.Overview, config: Config) -> str:
     if s := o.system:
         used = {r.partition for r in o.instances}
         free = [p.name for p in s.partitions if p.name not in used]
-        out.append(f"node           {config.node.title}: up {_duration(s.uptime_seconds)}")
-        out.append(f"partitions     {len(s.partitions) - len(free)} of {len(s.partitions)} in use"
-                   + (f", free: {', '.join(free)}" if free else ""))
-        out.append(f"memory         {s.memory_available_mb} MB available of {s.memory_total_mb} MB")
-        out.append(f"disk           {s.disk_free_mb // 1024} GB free of {s.disk_total_mb // 1024} GB")
+        out.append(
+            f"node           {config.node.title}: up {_duration(s.uptime_seconds)}"
+        )
+        out.append(
+            f"partitions     {len(s.partitions) - len(free)} of {len(s.partitions)} in use"
+            + (f", free: {', '.join(free)}" if free else "")
+        )
+        out.append(
+            f"memory         {s.memory_available_mb} MB available of {s.memory_total_mb} MB"
+        )
+        out.append(
+            f"disk           {s.disk_free_mb // 1024} GB free of {s.disk_total_mb // 1024} GB"
+        )
     if f := o.facts:
         built = sum(b.state == "completed" for b in f.software)
         out.append(f"builds         {built} of {len(f.software)} complete")
         for b in f.software:
             if b.state != "completed":
-                out.append(f"build          {config.url_name(b.url)}: {b.state}"
-                           + (f" (last error: {b.last_error})" if b.last_error else ""))
+                out.append(
+                    f"build          {config.url_name(b.url)}: {b.state}"
+                    + (f" (last error: {b.last_error})" if b.last_error else "")
+                )
         # Their output is for `hox status NAME`.
-        out += [f"promise        {re.sub(r"Promise '([^']+)' failed.*", r"\1", p)}" for p in f.failing_promises]
+        out += [
+            f"promise        {re.sub(r"Promise '([^']+)' failed.*", r'\1', p)}"
+            for p in f.failing_promises
+        ]
         if not f.failing_promises:
             out.append("promises       all OK in the last instance run")
     # All of a partition's services are down while the node boots: its status says enough.
-    out += [f"down           {r.instance}: {', '.join(r.down)}" for r in o.instances if r.down and r.status != "not running"]
+    out += [
+        f"down           {r.instance}: {', '.join(r.down)}"
+        for r in o.instances
+        if r.down and r.status != "not running"
+    ]
     if o.undeployed:
         out.append(f"not deployed   {', '.join(o.undeployed)}")
     return "\n".join([*out, "", format_instances(o)] if out else [format_instances(o)])
@@ -284,18 +327,24 @@ def format_report(r: status_module.Report, config: Config) -> str:
     if i is None:
         out.append("instance       none (`hox request` to create it)")
     else:
-        out.append(f"instance       {i.title}: {i.state}, {config.url_name(i.url)}, type {i.software_type}")
+        out.append(
+            f"instance       {i.title}: {i.state}, {config.url_name(i.url)}, type {i.software_type}"
+        )
         out.append(f"partition      {i.partition or 'not allocated'}")
         if s := r.services:
-            out.append(f"services       {s.running} running, {s.memory_mb} MB"
-                       + (f", down: {', '.join(s.down)}" if s.down else ""))
+            out.append(
+                f"services       {s.running} running, {s.memory_mb} MB"
+                + (f", down: {', '.join(s.down)}" if s.down else "")
+            )
         out += [f"diagnosis      {d}" for d in r.diagnosis]
         if i.news:
             out.append(f"news           {i.news}")
         for key, value in sorted(i.connection.items()):
             out.append(f"connection     {key} = {value}")
         for f in i.frontends:
-            out.append(f"frontend       {f.title}: {'allocated' if f.allocated else 'not allocated'}")
+            out.append(
+                f"frontend       {f.title}: {'allocated' if f.allocated else 'not allocated'}"
+            )
     states = {s.url: s for s in (r.node.software if r.node else [])}
     for inst in r.installations:
         node_state = states.get(inst.url)
@@ -314,9 +363,15 @@ def format_report(r: status_module.Report, config: Config) -> str:
             out.append("promises       all OK in the last instance run")
     if r.github:
         g = r.github
-        served = {True: "serves it", False: "serves an older file (cache: up to 5 min)", None: "could not be fetched"}
-        out.append(f"github         local head {g.local_head[:9]}, {'pushed' if g.pushed else 'NOT pushed'},"
-                   f" raw.githubusercontent.com {served[g.served]}")
+        served = {
+            True: "serves it",
+            False: "serves an older file (cache: up to 5 min)",
+            None: "could not be fetched",
+        }
+        out.append(
+            f"github         local head {g.local_head[:9]}, {'pushed' if g.pushed else 'NOT pushed'},"
+            f" raw.githubusercontent.com {served[g.served]}"
+        )
     return "\n".join(out)
 
 
@@ -339,12 +394,17 @@ def check(software: str | None = None) -> int:
     config = _config()
     sw = config.software_named(software)
     inst = _instance_or_fail(_api(config), sw)
-    return _report_checks(dev.run_checks(sw.checks, inst.connection, Node(config.node.ssh)))
+    return _report_checks(
+        dev.run_checks(sw.checks, inst.connection, Node(config.node.ssh))
+    )
 
 
 def _report_checks(results: list[dev.CheckResult]) -> int:
     for r in results:
-        print(f"{'ok  ' if r.ok else 'FAIL'}  {r.name}: {r.detail}" + (f"  ({r.url})" if r.url else ""))
+        print(
+            f"{'ok  ' if r.ok else 'FAIL'}  {r.name}: {r.detail}"
+            + (f"  ({r.url})" if r.url else "")
+        )
     return 0 if all(r.ok for r in results) else 1
 
 
@@ -358,7 +418,9 @@ def _require_published(sw: Software, *, wait: bool = True) -> None:
 
 
 @app.command
-def rebuild(software: str | None = None, *, software_only: bool = False, no_wait: bool = False) -> int:
+def rebuild(
+    software: str | None = None, *, software_only: bool = False, no_wait: bool = False
+) -> int:
     """The dev loop: rebuild the branch URL in place on the node, redeploy, check.
 
     Refuses if the local branch isn't pushed. Waits until raw.githubusercontent.com
@@ -384,9 +446,14 @@ def rebuild(software: str | None = None, *, software_only: bool = False, no_wait
     if inst.partition is None:
         raise DevError(f"{sw.instance} is not allocated yet: `hox status` says why")
     # Only our partition: another one's failure (a release still building) isn't ours.
-    if node.slapgrid(f"instance --force --only-cp {inst.partition}") == SLAPGRID_PROMISE_FAIL:
+    if (
+        node.slapgrid(f"instance --force --only-cp {inst.partition}")
+        == SLAPGRID_PROMISE_FAIL
+    ):
         print("some promises fail (see above)")
-    inst = _instance_or_fail(_api(config), sw)  # connection parameters, as published by this run
+    inst = _instance_or_fail(
+        _api(config), sw
+    )  # connection parameters, as published by this run
     return _report_checks(dev.run_checks(sw.checks, inst.connection, node))
 
 
@@ -408,7 +475,9 @@ def try_start(software: str, *, timeout: int = 300) -> int:
     source = Path(try_start_module.__file__).read_bytes()
     python = f"cd {try_start_module.BUILDS} && /opt/slapos/parts/python3/bin/python3 -u - {shlex.quote(software)} {timeout}"
     command = f"su -s /bin/sh slapsoft -c {shlex.quote(python)}"
-    return subprocess.run([*_config().node.ssh, command], input=source, check=False).returncode
+    return subprocess.run(
+        [*_config().node.ssh, command], input=source, check=False
+    ).returncode
 
 
 @app.command
@@ -441,7 +510,9 @@ def logs(
         target = f"/srv/slapgrid/{partition}/.{partition}_*.log"
     else:
         target = SOFTWARE_LOG if kind == "software" else INSTANCE_LOG
-    return Node(config.node.ssh).interactive(f"tail -n {lines}{' -F' if follow else ''} {target}")
+    return Node(config.node.ssh).interactive(
+        f"tail -n {lines}{' -F' if follow else ''} {target}"
+    )
 
 
 def _url(sw: Software, pinned: str | None) -> str:
@@ -454,7 +525,9 @@ def _confirm(question: str, yes: bool) -> None:
 
 
 @app.command
-def supply(software: str | None = None, *, pinned: str | None = None, remove: bool = False):
+def supply(
+    software: str | None = None, *, pinned: str | None = None, remove: bool = False
+):
     """Supply the software release on our node (or remove it).
 
     Parameters
@@ -469,14 +542,20 @@ def supply(software: str | None = None, *, pinned: str | None = None, remove: bo
     config = _config()
     url = _url(config.software_named(software), pinned)
     node = _node(config, _api(config))
-    Slap.connect(config.master).supply(url, node.reference, "destroyed" if remove else "available")
+    Slap.connect(config.master).supply(
+        url, node.reference, "destroyed" if remove else "available"
+    )
     print(f"{'removal' if remove else 'supply'} of {url} on {node.reference} requested")
 
 
 @app.command
 def request(
-    software: str | None = None, *, name: str | None = None, pinned: str | None = None,
-    replace: bool = False, yes: bool = False,
+    software: str | None = None,
+    *,
+    name: str | None = None,
+    pinned: str | None = None,
+    replace: bool = False,
+    yes: bool = False,
 ):
     """Request the instance on our node, with the branch URL or a pinned one.
 
@@ -505,20 +584,28 @@ def request(
     existing = stored_request(api, name)
     if existing and existing.software_release != url:
         if not replace:
-            raise DevError(f"{name} runs {existing.software_release}; the master refuses a URL change: use --replace")
+            raise DevError(
+                f"{name} runs {existing.software_release}; the master refuses a URL change: use --replace"
+            )
         _confirm(f"Destroy {name} and request {next_name(name)}?", yes)
         slap.request(dataclasses.replace(existing, state="destroyed"))
         print(f"{name}: destruction requested")
         name, existing = next_name(name), None
         while stored_request(api, name):
             name = next_name(name)
-    req = existing or Request(url, name, sw.software_type, {"computer_guid": _node(config, api).reference})
+    req = existing or Request(
+        url, name, sw.software_type, {"computer_guid": _node(config, api).reference}
+    )
     if sw.parameters is not None:
         req = dataclasses.replace(req, parameters=sw.parameters)
     ready = slap.request(dataclasses.replace(req, state="started"))
-    print(f"{name}: {'requested' if ready else 'requested, the master is provisioning it'} ({url})")
+    print(
+        f"{name}: {'requested' if ready else 'requested, the master is provisioning it'} ({url})"
+    )
     if name != sw.instance:
-        print(f"set instance = {name!r} in [software.{sw.name}] of {config.root / config_module.FILENAME}")
+        print(
+            f"set instance = {name!r} in [software.{sw.name}] of {config.root / config_module.FILENAME}"
+        )
 
 
 @app.command
@@ -537,7 +624,9 @@ def destroy(name: str, *, yes: bool = False):
     if existing is None:
         raise DevError(f"no instance {name!r} on the master")
     _confirm(f"Destroy {name} ({existing.software_release})?", yes)
-    Slap.connect(config.master).request(dataclasses.replace(existing, state="destroyed"))
+    Slap.connect(config.master).request(
+        dataclasses.replace(existing, state="destroyed")
+    )
     print(f"{name}: destruction requested")
 
 
@@ -549,7 +638,9 @@ def _set_state(name: str, state: str) -> None:
     if existing.state == "destroyed":
         raise DevError(f"{name} is destroyed")
     Slap.connect(config.master).request(dataclasses.replace(existing, state=state))
-    print(f"{name}: requested state {state}; the node acts within a minute or two (hox instances)")
+    print(
+        f"{name}: requested state {state}; the node acts within a minute or two (hox instances)"
+    )
 
 
 @app.command
@@ -638,7 +729,9 @@ def deploy(software: str | None = None) -> int:
     request(software)
     config = _config()
     sw = config.software_named(software)
-    results = deploy_module.deploy(_api(config), sw, sw.branch_url, Node(config.node.ssh))
+    results = deploy_module.deploy(
+        _api(config), sw, sw.branch_url, Node(config.node.ssh)
+    )
     return _report_checks(results)
 
 
@@ -664,7 +757,11 @@ def re6st_token():
     10+ minutes to publish a new one. Only the token goes to stdout.
     """
     config = _config()
-    print(panel.re6st_token(_api(config), Slap.connect(config.master), config, out=_stderr))
+    print(
+        panel.re6st_token(
+            _api(config), Slap.connect(config.master), config, out=_stderr
+        )
+    )
 
 
 def _stderr(line: str) -> None:

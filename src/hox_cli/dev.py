@@ -11,7 +11,9 @@ from .config import Check, Software
 from .node import Node, git
 
 GITHUB_POLL_SECONDS = 15
-GITHUB_TIMEOUT_SECONDS = 6 * 60  # raw.githubusercontent.com caches branch files up to 5 minutes
+GITHUB_TIMEOUT_SECONDS = (
+    6 * 60
+)  # raw.githubusercontent.com caches branch files up to 5 minutes
 CURL_TIMEOUT_SECONDS = 20
 
 
@@ -24,7 +26,9 @@ def wait_for(what: str, find, sleep=time.sleep, poll: int = 5, timeout: int = 18
     waited = 0
     while not (rows := find()):
         if waited >= timeout:
-            raise DevError(f"{what}: still not there after {waited // 60} min {waited % 60} s")
+            raise DevError(
+                f"{what}: still not there after {waited // 60} min {waited % 60} s"
+            )
         sleep(poll)
         waited += poll
     return rows[0]
@@ -50,7 +54,9 @@ def pushed_commit(sw: Software, commit: str) -> str:
     """
     sha = git(sw.checkout, "rev-parse", "--verify", f"{commit}^{{commit}}").strip()
     if not git(sw.checkout, "branch", "-r", "--contains", sha).strip():
-        raise DevError(f"{commit} is on no branch of origin (as last fetched): push it first")
+        raise DevError(
+            f"{commit} is on no branch of origin (as last fetched): push it first"
+        )
     return sha
 
 
@@ -70,13 +76,19 @@ def stale_files(sw: Software, files: dict[str, str], http: httpx2.Client) -> lis
     return stale
 
 
-def wait_for_github(sw: Software, commit: str, http: httpx2.Client, out=print, sleep=time.sleep) -> None:
+def wait_for_github(
+    sw: Software, commit: str, http: httpx2.Client, out=print, sleep=time.sleep
+) -> None:
     files = software_files(sw, commit)
     waited = 0
     while stale := stale_files(sw, files, http):
         if waited >= GITHUB_TIMEOUT_SECONDS:
-            raise DevError(f"raw.githubusercontent.com still serves old versions of: {', '.join(stale)}")
-        out(f"raw.githubusercontent.com serves old {', '.join(stale)}, retrying in {GITHUB_POLL_SECONDS}s")
+            raise DevError(
+                f"raw.githubusercontent.com still serves old versions of: {', '.join(stale)}"
+            )
+        out(
+            f"raw.githubusercontent.com serves old {', '.join(stale)}, retrying in {GITHUB_POLL_SECONDS}s"
+        )
         sleep(GITHUB_POLL_SECONDS)
         waited += GITHUB_POLL_SECONDS
     out(f"raw.githubusercontent.com serves {commit[:9]} ({len(files)} files)")
@@ -90,7 +102,9 @@ class CheckResult:
     detail: str
 
 
-def run_checks(checks: tuple[Check, ...], connection: dict[str, str], node: Node) -> list[CheckResult]:
+def run_checks(
+    checks: tuple[Check, ...], connection: dict[str, str], node: Node
+) -> list[CheckResult]:
     """Run each check with curl on the node: backends are only reachable over re6st."""
     published = {k: v for k, v in connection.items() if v not in (None, "None", "")}
     results = []
@@ -98,14 +112,27 @@ def run_checks(checks: tuple[Check, ...], connection: dict[str, str], node: Node
         try:
             url = check.url.format_map(published)
         except KeyError as e:
-            results.append(CheckResult(check.name, None, False, f"{e.args[0]} is not published yet"))
+            results.append(
+                CheckResult(
+                    check.name, None, False, f"{e.args[0]} is not published yet"
+                )
+            )
             continue
         results.append(evaluate(check, url, node.run(curl_command(check, url))))
     return results
 
 
 def curl_command(check: Check, url: str) -> str:
-    args = ["curl", "-gsk", "-o", "/dev/null", "-D", "-", "--max-time", str(CURL_TIMEOUT_SECONDS)]
+    args = [
+        "curl",
+        "-gsk",
+        "-o",
+        "/dev/null",
+        "-D",
+        "-",
+        "--max-time",
+        str(CURL_TIMEOUT_SECONDS),
+    ]
     for key, value in check.headers.items():
         args += ["-H", f"{key}: {value}"]
     # Always exit 0 so the output is ours to read; curl's own code comes last.
@@ -130,4 +157,6 @@ def evaluate(check: Check, url: str, output: str) -> CheckResult:
     for key, value in check.expect_header.items():
         if headers.get(key.lower()) != value:
             problems.append(f"{key}: {headers.get(key.lower())!r}, expected {value!r}")
-    return CheckResult(check.name, url, not problems, "; ".join(problems) or f"status {status}")
+    return CheckResult(
+        check.name, url, not problems, "; ".join(problems) or f"status {status}"
+    )

@@ -23,6 +23,8 @@ _EVENT = re.compile(
     r"|(?P<finished>Finished software releases\.)"
     r"|(?P<processing>Processing software releases\.\.\.))$"
 )
+
+
 def utc(text: str) -> datetime:
     """A time of the node's logs or `date -u`: the node runs in UTC."""
     return datetime.strptime(text, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC)
@@ -41,13 +43,20 @@ class Run:
     url: str
     start: datetime
     end: datetime | None = None  # None: still running when the log was read
-    result: str = "building"  # "completed", "failed", "stopped" (killed, no result) or "building"
-    parts: list[tuple[str, datetime]] = field(default_factory=list)  # (part, when its install started)
+    result: str = (
+        "building"  # "completed", "failed", "stopped" (killed, no result) or "building"
+    )
+    parts: list[tuple[str, datetime]] = field(
+        default_factory=list
+    )  # (part, when its install started)
 
     def part_times(self, now: datetime) -> list[tuple[str, float]]:
         """(part, seconds), each part lasting until the next one starts or the run ends."""
         ends = [t for _, t in self.parts[1:]] + [self.end or now]
-        return [(name, (end - start).total_seconds()) for (name, start), end in zip(self.parts, ends)]
+        return [
+            (name, (end - start).total_seconds())
+            for (name, start), end in zip(self.parts, ends)
+        ]
 
 
 def parse_runs(log: str) -> list[Run]:
@@ -122,7 +131,10 @@ def gather(node: Node) -> tuple[list[Run], NodeUsage]:
         int(memory),
         makeflags.removeprefix("MAKEFLAGS=") or None,
         (int(used), int(size)),
-        {path: int(kib) for kib, path in (line.split("\t") for line in sizes.splitlines())},
+        {
+            path: int(kib)
+            for kib, path in (line.split("\t") for line in sizes.splitlines())
+        },
     )
     return parse_runs(log), usage
 
@@ -150,30 +162,46 @@ def markdown(config: Config, sw: Software, runs: list[Run], usage: NodeUsage) ->
     for url in dict.fromkeys(r.url for r in ours):
         url_runs = [r for r in ours if r.url == url]
         out += ["", f"## {config.url_name(url)}", "", f"<{url}>", ""]
-        out += ["| Run | Started (UTC) | Ended (UTC) | Duration | Result |", "|---|---|---|---|---|"]
+        out += [
+            "| Run | Started (UTC) | Ended (UTC) | Duration | Result |",
+            "|---|---|---|---|---|",
+        ]
         for i, r in enumerate(url_runs, 1):
             end = f"{r.end:%Y-%m-%d %H:%M}" if r.end else "running"
             spent = duration(((r.end or usage.now) - r.start).total_seconds())
-            out.append(f"| {i} | {r.start:%Y-%m-%d %H:%M} | {end} | {spent} | {r.result} |")
+            out.append(
+                f"| {i} | {r.start:%Y-%m-%d %H:%M} | {end} | {spent} | {r.result} |"
+            )
         total = sum(((r.end or usage.now) - r.start).total_seconds() for r in url_runs)
         out += ["", f"Total build time: {duration(total)} over {len(url_runs)} run(s)."]
         longest = max(url_runs, key=lambda r: len(r.parts))
         times = sorted(longest.part_times(usage.now), key=lambda p: -p[1])
         if times:
             number = url_runs.index(longest) + 1
-            out += ["", f"Longest parts of run {number} (from buildout's \"Installing\" lines):", ""]
+            out += [
+                "",
+                f'Longest parts of run {number} (from buildout\'s "Installing" lines):',
+                "",
+            ]
             out += ["| Part | Time |", "|---|---|"]
             out += [f"| {name} | {duration(t)} |" for name, t in times[:LONGEST]]
             if rest := times[LONGEST:]:
-                out.append(f"| {len(rest)} other parts | {duration(sum(t for _, t in rest))} |")
+                out.append(
+                    f"| {len(rest)} other parts | {duration(sum(t for _, t in rest))} |"
+                )
     shared = {p: k for p, k in usage.sizes_kib.items() if p.startswith(SHARED + "/")}
     largest = sorted(shared.items(), key=lambda p: -p[1])[:LARGEST]
     out += ["", "## Disk", "", "| What | Size |", "|---|---|"]
     for url in dict.fromkeys(r.url for r in ours):
         if (kib := usage.sizes_kib.get(software_dir(url))) is not None:
             out.append(f"| {config.url_name(url)}: release directory | {size(kib)} |")
-    out.append(f"| Shared parts, for every release on the node ({len(shared)}) | {size(sum(shared.values()))} |")
-    out += [f"| &nbsp;&nbsp;{p.removeprefix(SHARED + '/')} | {size(k)} |" for p, k in largest]
+    out.append(
+        f"| Shared parts, for every release on the node ({len(shared)}) | {size(sum(shared.values()))} |"
+    )
+    out += [
+        f"| &nbsp;&nbsp;{p.removeprefix(SHARED + '/')} | {size(k)} |"
+        for p, k in largest
+    ]
     used, total = usage.disk_kib
     out.append(f"| Node disk used (all of it) | {size(used)} of {size(total)} |")
     return "\n".join(out)

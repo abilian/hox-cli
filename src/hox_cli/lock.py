@@ -28,7 +28,9 @@ class Pin:
     name: str
     version: str
     sdist: bool
-    wheel: str | None  # "pure", "binary" (manylinux, for the node), or none for the node
+    wheel: (
+        str | None
+    )  # "pure", "binary" (manylinux, for the node), or none for the node
 
     @property
     def stack_built(self) -> bool:
@@ -38,7 +40,11 @@ class Pin:
     def constraint(self) -> str:
         # A wheel installs without a build: buildout builds sdists with the build's
         # setuptools (74 on SlapOS 1.0), which many recent sdists are too new for.
-        return f"{self.version}:whl" if self.wheel and not self.stack_built else self.version
+        return (
+            f"{self.version}:whl"
+            if self.wheel and not self.stack_built
+            else self.version
+        )
 
 
 def node_tags(python: str) -> frozenset[tags.Tag]:
@@ -46,9 +52,16 @@ def node_tags(python: str) -> frozenset[tags.Tag]:
     (the node's glibc, Debian 12, is 2.36)."""
     version = tuple(int(n) for n in python.split(".")[:2])
     platforms = [f"manylinux_2_{minor}_x86_64" for minor in range(36, 4, -1)]
-    platforms += ["manylinux2014_x86_64", "manylinux2010_x86_64", "manylinux1_x86_64", "linux_x86_64"]
-    return frozenset([*tags.cpython_tags(version, platforms=platforms),
-                      *tags.compatible_tags(version, platforms=platforms)])
+    platforms += [
+        "manylinux2014_x86_64",
+        "manylinux2010_x86_64",
+        "manylinux1_x86_64",
+        "linux_x86_64",
+    ]
+    return frozenset([
+        *tags.cpython_tags(version, platforms=platforms),
+        *tags.compatible_tags(version, platforms=platforms),
+    ])
 
 
 def wheel_kind(filenames: list[str], supported: frozenset[tags.Tag]) -> str | None:
@@ -82,11 +95,15 @@ def runtime_pins(lock: dict, python: str) -> list[Pin]:
         packages.setdefault(p["name"], []).append(p)
     roots = [p for p in lock["package"] if {"editable", "virtual"} & p["source"].keys()]
     if len(roots) != 1:
-        raise LockError(f"expected one editable or virtual root package, found {len(roots)}")
+        raise LockError(
+            f"expected one editable or virtual root package, found {len(roots)}"
+        )
     root = roots[0]
 
     def holds(dep: dict, extra: str = "") -> bool:
-        return "marker" not in dep or Marker(dep["marker"]).evaluate(env | {"extra": extra})
+        return "marker" not in dep or Marker(dep["marker"]).evaluate(
+            env | {"extra": extra}
+        )
 
     def package(dep: dict) -> dict:
         found = packages[dep["name"]]
@@ -102,7 +119,11 @@ def runtime_pins(lock: dict, python: str) -> list[Pin]:
         if (p["name"], extra) in seen:
             continue
         seen.add((p["name"], extra))
-        deps = p.get("optional-dependencies", {}).get(extra, []) if extra else p.get("dependencies", [])
+        deps = (
+            p.get("optional-dependencies", {}).get(extra, [])
+            if extra
+            else p.get("dependencies", [])
+        )
         for dep in deps:
             if not holds(dep, extra):
                 continue
@@ -110,13 +131,19 @@ def runtime_pins(lock: dict, python: str) -> list[Pin]:
             todo += [(q, "")] + [(q, e) for e in dep.get("extra", [])]
         if p is not root and not extra and p["name"] not in BUILDOUT_TOOLS:
             wheels = [w["url"].rsplit("/", 1)[1] for w in p.get("wheels", [])]
-            pins[p["name"]] = Pin(p["name"], p["version"], "sdist" in p, wheel_kind(wheels, supported))
+            pins[p["name"]] = Pin(
+                p["name"], p["version"], "sdist" in p, wheel_kind(wheels, supported)
+            )
     return sorted(pins.values(), key=lambda pin: pin.name)
 
 
 def versions_cfg(path: Path, python: str) -> str:
     """A [versions] section for buildout, with what needs attention as comments."""
-    return render_versions(runtime_pins(tomllib.loads(path.read_text()), python), f"{path.name} by `hox versions`", python)
+    return render_versions(
+        runtime_pins(tomllib.loads(path.read_text()), python),
+        f"{path.name} by `hox versions`",
+        python,
+    )
 
 
 def render_versions(pins: list[Pin], source: str, python: str) -> str:
@@ -124,23 +151,41 @@ def render_versions(pins: list[Pin], source: str, python: str) -> str:
     stack = [p.name for p in pins if p.stack_built]
     compiled = [p.name for p in pins if not p.wheel and p.sdist]
     unbuildable = [p.name for p in pins if not p.wheel and not p.sdist]
-    lines = [f"# From {source}, for CPython {python} on Linux x86_64.",
-             "# Packages with a wheel for the node are installed from it (:whl)."]
+    lines = [
+        f"# From {source}, for CPython {python} on Linux x86_64.",
+        "# Packages with a wheel for the node are installed from it (:whl).",
+    ]
     if binary:
-        lines += ["# From binary (manylinux) wheels, with their C libraries bundled, not",
-                  "# SlapOS's: a security fix in one comes with a new release of the package.",
-                  *_wrapped(binary)]
+        lines += [
+            "# From binary (manylinux) wheels, with their C libraries bundled, not",
+            "# SlapOS's: a security fix in one comes with a new release of the package.",
+            *_wrapped(binary),
+        ]
     if stack:
-        lines += ["# Built by SlapOS's stack (slapos.cookbook), from source, with its recipe:",
-                  *_wrapped(stack)]
+        lines += [
+            "# Built by SlapOS's stack (slapos.cookbook), from source, with its recipe:",
+            *_wrapped(stack),
+        ]
     if compiled:
-        lines += ["# Built from their sdist (no wheel for the node): those with C or Rust",
-                  "# code need their libraries and build tools in the build:", *_wrapped(compiled)]
+        lines += [
+            "# Built from their sdist (no wheel for the node): those with C or Rust",
+            "# code need their libraries and build tools in the build:",
+            *_wrapped(compiled),
+        ]
     if unbuildable:
-        lines += ["# No sdist and no wheel for the node, so buildout can't install them:",
-                  "# replace them (another extra, or a SlapOS component):", *_wrapped(unbuildable)]
+        lines += [
+            "# No sdist and no wheel for the node, so buildout can't install them:",
+            "# replace them (another extra, or a SlapOS component):",
+            *_wrapped(unbuildable),
+        ]
     width = max(len(p.name) for p in pins)
-    return "\n".join([*lines, "", "[versions]", *(f"{p.name:<{width}} = {p.constraint}" for p in pins), ""])
+    return "\n".join([
+        *lines,
+        "",
+        "[versions]",
+        *(f"{p.name:<{width}} = {p.constraint}" for p in pins),
+        "",
+    ])
 
 
 def _wrapped(names: list[str]) -> list[str]:

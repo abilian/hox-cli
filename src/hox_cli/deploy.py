@@ -23,7 +23,13 @@ def wait_allocated(api: Api, sw: Software, out=print, sleep=time.sleep) -> str:
         return [inst.partition] if inst and inst.partition else []
 
     out(f"{sw.instance}: waiting for allocation")
-    partition = dev.wait_for(f"{sw.instance}'s allocation", find, sleep, ALLOCATION_POLL_SECONDS, ALLOCATION_TIMEOUT_SECONDS)
+    partition = dev.wait_for(
+        f"{sw.instance}'s allocation",
+        find,
+        sleep,
+        ALLOCATION_POLL_SECONDS,
+        ALLOCATION_TIMEOUT_SECONDS,
+    )
     out(f"{sw.instance}: allocated on {partition}")
     return partition
 
@@ -35,33 +41,55 @@ def wait_built(node: Node, url: str, out=print, sleep=time.sleep) -> None:
         nonlocal last
         [state] = node.facts([url]).software
         if (state.state, state.last_error) != last:
-            out(f"build of {url}: {state.state}" + (f" (last error: {state.last_error})" if state.last_error else ""))
+            out(
+                f"build of {url}: {state.state}"
+                + (f" (last error: {state.last_error})" if state.last_error else "")
+            )
             last = (state.state, state.last_error)
         return [True] if state.state == "completed" else []
 
-    dev.wait_for(f"build of {url}", find, sleep, BUILD_POLL_SECONDS, BUILD_TIMEOUT_SECONDS)
+    dev.wait_for(
+        f"build of {url}", find, sleep, BUILD_POLL_SECONDS, BUILD_TIMEOUT_SECONDS
+    )
 
 
-def wait_checks(api: Api, sw: Software, node: Node, out=print, sleep=time.sleep) -> list[dev.CheckResult]:
+def wait_checks(
+    api: Api, sw: Software, node: Node, out=print, sleep=time.sleep
+) -> list[dev.CheckResult]:
     last = None
 
     def find() -> list[list[dev.CheckResult]]:
         nonlocal last
-        results = dev.run_checks(sw.checks, status.instance(api, sw.instance).connection, node)
+        results = dev.run_checks(
+            sw.checks, status.instance(api, sw.instance).connection, node
+        )
         failing = [f"{r.name}: {r.detail}" for r in results if not r.ok]
         if failing and failing != last:
             out("waiting for: " + "; ".join(failing))
         last = failing
         return [] if failing else [results]
 
-    return dev.wait_for(f"{sw.instance}'s checks", find, sleep, CHECKS_POLL_SECONDS, CHECKS_TIMEOUT_SECONDS)
+    return dev.wait_for(
+        f"{sw.instance}'s checks",
+        find,
+        sleep,
+        CHECKS_POLL_SECONDS,
+        CHECKS_TIMEOUT_SECONDS,
+    )
 
 
-def deploy(api: Api, sw: Software, url: str, node: Node, out=print, sleep=time.sleep) -> list[dev.CheckResult]:
+def deploy(
+    api: Api, sw: Software, url: str, node: Node, out=print, sleep=time.sleep
+) -> list[dev.CheckResult]:
     """After `hox setup` and `hox request`: allocated, built, deployed, checks passing."""
     partition = wait_allocated(api, sw, out, sleep)
     wait_built(node, url, out, sleep)
     # Only our partition: another one's failure (a release still building) isn't ours.
-    if node.slapgrid(f"instance --force --only-cp {partition}", out) == SLAPGRID_PROMISE_FAIL:
-        out("some promises fail (see above); they may pass once the frontends are there")
+    if (
+        node.slapgrid(f"instance --force --only-cp {partition}", out)
+        == SLAPGRID_PROMISE_FAIL
+    ):
+        out(
+            "some promises fail (see above); they may pass once the frontends are there"
+        )
     return wait_checks(api, sw, node, out, sleep)

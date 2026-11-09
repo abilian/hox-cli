@@ -28,7 +28,9 @@ def software_dir(url: str) -> str:
 class SoftwareState:
     url: str
     state: str  # "completed", "building" (dir present, not completed) or "absent"
-    last_error: str | None  # last buildout error for this dir, if the last run of it failed
+    last_error: (
+        str | None
+    )  # last buildout error for this dir, if the last run of it failed
 
 
 @dataclass(frozen=True)
@@ -62,7 +64,9 @@ class Partition:
     name: str
     memory_mb: int  # the resident size of its user's processes
     running: int
-    down: list[str]  # services that should run and don't, as `service_name` shortens them
+    down: list[
+        str
+    ]  # services that should run and don't, as `service_name` shortens them
 
 
 @dataclass(frozen=True)
@@ -76,7 +80,13 @@ class System:
 
 
 class Node:
-    def __init__(self, ssh: tuple[str, ...], run=subprocess.run, popen=subprocess.Popen, sleep=time.sleep):
+    def __init__(
+        self,
+        ssh: tuple[str, ...],
+        run=subprocess.run,
+        popen=subprocess.Popen,
+        sleep=time.sleep,
+    ):
         self._ssh = ssh
         self._run = run
         self._popen = popen
@@ -85,9 +95,13 @@ class Node:
     def run(self, command: str) -> str:
         result = self._run([*self._ssh, command], capture_output=True, text=True)
         if result.returncode == SSH_FAILED:
-            raise NodeError(f"{self._ssh[0]} {self._ssh[-1]}: {result.stderr.strip()[-500:].replace(chr(10), '; ')}")
+            raise NodeError(
+                f"{self._ssh[0]} {self._ssh[-1]}: {result.stderr.strip()[-500:].replace(chr(10), '; ')}"
+            )
         if result.returncode != 0:
-            raise NodeError(f"{shlex.join(self._ssh)} {command!r}: exit {result.returncode}: {result.stderr.strip()[-500:]}")
+            raise NodeError(
+                f"{shlex.join(self._ssh)} {command!r}: exit {result.returncode}: {result.stderr.strip()[-500:]}"
+            )
         return result.stdout
 
     def stream(self, command: str, keep, out=print) -> tuple[int, list[str]]:
@@ -96,7 +110,12 @@ class Node:
         Returns its exit code and its last lines, shown or not (ssh's own errors included).
         """
         last = deque(maxlen=TAIL_LINES)
-        with self._popen([*self._ssh, command], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
+        with self._popen(
+            [*self._ssh, command],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        ) as proc:
             for line in proc.stdout:
                 line = line.rstrip("\n")
                 last.append(line)
@@ -119,24 +138,32 @@ class Node:
             if code != SLAPGRID_BUSY:
                 break
             if waited >= BUSY_TIMEOUT_SECONDS:
-                raise NodeError(f"slapos node {args}: another slapos run kept the lock for {waited // 60} min")
+                raise NodeError(
+                    f"slapos node {args}: another slapos run kept the lock for {waited // 60} min"
+                )
             out(f"another slapos run is going on, retrying in {BUSY_RETRY_SECONDS}s")
             self._sleep(BUSY_RETRY_SECONDS)
             waited += BUSY_RETRY_SECONDS
         if code not in (SLAPGRID_OK, SLAPGRID_PROMISE_FAIL):
             what = "ssh failed" if code == SSH_FAILED else f"exit {code}"
-            raise NodeError(f"slapos node {args}: {what}; its last lines:\n" + "\n".join(last))
+            raise NodeError(
+                f"slapos node {args}: {what}; its last lines:\n" + "\n".join(last)
+            )
         return code
 
     def facts(self, urls: list[str]) -> NodeFacts:
         dirs = [software_dir(u) for u in urls]
-        script = "; ".join(
-            [f"for d in {' '.join(dirs)}; do"
-             " if [ -f $d/.completed ]; then echo $d completed;"
-             " elif [ -d $d ]; then echo $d building; else echo $d absent; fi; done" if dirs else "true",
-             f"echo {SEPARATOR}", f"tail -n {LOG_LINES} {SOFTWARE_LOG}",
-             f"echo {SEPARATOR}", f"tail -n {LOG_LINES} {INSTANCE_LOG}"]
-        )
+        script = "; ".join([
+            f"for d in {' '.join(dirs)}; do"
+            " if [ -f $d/.completed ]; then echo $d completed;"
+            " elif [ -d $d ]; then echo $d building; else echo $d absent; fi; done"
+            if dirs
+            else "true",
+            f"echo {SEPARATOR}",
+            f"tail -n {LOG_LINES} {SOFTWARE_LOG}",
+            f"echo {SEPARATOR}",
+            f"tail -n {LOG_LINES} {INSTANCE_LOG}",
+        ])
         return parse_facts(urls, self.run(script))
 
     def system(self) -> System:
@@ -179,12 +206,18 @@ def parse_system(output: str) -> System:
     memory = free.splitlines()[1].split()
     disk = df.splitlines()[1].split()
     partitions = sorted(
-        (name.rsplit("/", 1)[1] for name in names.split()), key=lambda name: int(name.removeprefix("slappart"))
+        (name.rsplit("/", 1)[1] for name in names.split()),
+        key=lambda name: int(name.removeprefix("slappart")),
     )
     return System(
         uptime_seconds=int(float(uptime)),
         partitions=[
-            Partition(name, memory_kb.get(name, 0) // 1024, running.get(name, 0), down.get(name, []))
+            Partition(
+                name,
+                memory_kb.get(name, 0) // 1024,
+                running.get(name, 0),
+                down.get(name, []),
+            )
             for name in partitions
         ],
         memory_available_mb=int(memory[6]),
@@ -202,7 +235,9 @@ def parse_facts(urls: list[str], output: str) -> NodeFacts:
     for url in urls:
         d = software_dir(url)
         state = by_dir.get(d, "absent")
-        software.append(SoftwareState(url, state, errors.get(d) if state != "completed" else None))
+        software.append(
+            SoftwareState(url, state, errors.get(d) if state != "completed" else None)
+        )
     return NodeFacts(software, failing_promises(instance_log))
 
 
@@ -225,7 +260,9 @@ def last_buildout_errors(log: str) -> dict[str, str]:
         elif m := _ERROR.search(line):
             last_error = m.group(1)
         elif m := _FAILED.search(line):
-            errors[m.group(1)] = last_error or "buildout failed (no 'Error:' line in the log tail)"
+            errors[m.group(1)] = (
+                last_error or "buildout failed (no 'Error:' line in the log tail)"
+            )
     return errors
 
 
@@ -236,12 +273,14 @@ def failing_promises(log: str) -> list[str]:
     "Error with promises for the following partitions:" and one line each.
     """
     lines = log.splitlines()
-    finished = [i for i, line in enumerate(lines) if "Finished computer partitions." in line]
+    finished = [
+        i for i, line in enumerate(lines) if "Finished computer partitions." in line
+    ]
     if not finished:
         return []
     result = []
     in_block = False
-    for line in lines[finished[-1] + 1:]:
+    for line in lines[finished[-1] + 1 :]:
         if re.search(r"INFO\s+=+$", line):
             continue
         if "Error with promises for the following partitions:" in line:
@@ -254,7 +293,9 @@ def failing_promises(log: str) -> list[str]:
 
 
 def git(checkout: Path, *args: str) -> str:
-    result = subprocess.run(["git", "-C", str(checkout), *args], capture_output=True, text=True)
+    result = subprocess.run(
+        ["git", "-C", str(checkout), *args], capture_output=True, text=True
+    )
     if result.returncode != 0:
         raise NodeError(f"git -C {checkout} {' '.join(args)}: {result.stderr.strip()}")
     return result.stdout

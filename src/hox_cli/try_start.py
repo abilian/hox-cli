@@ -48,7 +48,10 @@ def parse(text: str) -> dict[str, dict[str, str]]:
             section[option] = assignment[2]
         elif option and (not line.strip() or line[0].isspace()):
             section[option] += "\n" + line
-    return {name: {k: v.rstrip() for k, v in options.items()} for name, options in sections.items()}
+    return {
+        name: {k: v.rstrip() for k, v in options.items()}
+        for name, options in sections.items()
+    }
 
 
 class Options:
@@ -78,9 +81,15 @@ class Profile:
             return self.overrides[section, option]
         options = self.sections.get(section, {})
         if option not in options and "init" in options:
-            exec(textwrap.dedent(options["init"]), {"options": Options(self, section), "self": self})  # ken: S102 intentional, the profile's own recipe code, as buildout runs it
+            exec(
+                textwrap.dedent(options["init"]),
+                {"options": Options(self, section), "self": self},
+            )  # ken: S102 intentional, the profile's own recipe code, as buildout runs it
             options.pop("init")
-        if option not in options and options.get("recipe") == "slapos.cookbook:generate.password":
+        if (
+            option not in options
+            and options.get("recipe") == "slapos.cookbook:generate.password"
+        ):
             options[option] = secrets.token_urlsafe(24)
         if option not in options and "<" in options:
             return self.get(options["<"], option)
@@ -97,12 +106,19 @@ class Profile:
         return value.replace("$${", "${")
 
     def write(self, section: str, path: str, options: dict[str, str]) -> None:
-        inline = "" if "context" in options else self.resolve(section, options["inline"])  # no parameters
+        inline = (
+            "" if "context" in options else self.resolve(section, options["inline"])
+        )  # no parameters
         text = textwrap.dedent(inline).strip().replace('{{ "\\n" }}', "") + "\n"
         Path(path).write_text(text)
 
     def environment(self) -> dict[str, str]:
-        lines = textwrap.dedent(self.get("process-base", "environment")).strip().splitlines()
+        lines = (
+            textwrap
+            .dedent(self.get("process-base", "environment"))
+            .strip()
+            .splitlines()
+        )
         return dict(line.split("=", 1) for line in lines)
 
 
@@ -130,18 +146,29 @@ class Run:
     def start(self, name: str, command: str) -> None:
         with self.log(name).open("w") as log:
             self.processes[name] = subprocess.Popen(
-                shlex.split(command), env=self.env, cwd=self.home, stdin=subprocess.DEVNULL,
-                stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+                shlex.split(command),
+                env=self.env,
+                cwd=self.home,
+                stdin=subprocess.DEVNULL,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
 
     def prepare(self) -> None:
         sections = self.profile.sections
         for option in sections["directory"]:
             if option != "recipe":
-                Path(self.profile.get("directory", option)).mkdir(parents=True, exist_ok=True)
+                Path(self.profile.get("directory", option)).mkdir(
+                    parents=True, exist_ok=True
+                )
         if "workdir" in sections:
             location = self.profile.get("workdir", "location")
             code = textwrap.dedent(sections["workdir"]["install"])
-            exec(code, {"options": Options(self.profile, "workdir"), "location": location})  # ken: S102 intentional, as above
+            exec(
+                code,
+                {"options": Options(self.profile, "workdir"), "location": location},
+            )  # ken: S102 intentional, as above
         self.env = self.profile.environment()
         if "postgresql" in sections:
             self.start_postgres()
@@ -157,17 +184,52 @@ class Run:
         def tool(program: str) -> str:
             return str(Path(get("bin")) / program)
 
-        pgdata, user, name, port = get("pgdata-directory"), get("superuser"), get("dbname"), get("port")
+        pgdata, user, name, port = (
+            get("pgdata-directory"),
+            get("superuser"),
+            get("dbname"),
+            get("port"),
+        )
         password = self.home / "postgres-password"
         password.write_text(get("password"))
-        subprocess.run([tool("initdb"), "-D", pgdata, "-U", user, "-A", "md5", f"--pwfile={password}", "-E", "UTF8"],
-                       check=True, stdout=subprocess.DEVNULL)
+        subprocess.run(
+            [
+                tool("initdb"),
+                "-D",
+                pgdata,
+                "-U",
+                user,
+                "-A",
+                "md5",
+                f"--pwfile={password}",
+                "-E",
+                "UTF8",
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
         options = f"-p {port} -k {self.home} -c listen_addresses={DATABASE_HOST}"
         self.postgres = [tool("pg_ctl"), "-D", pgdata, "-m", "fast", "stop"]
-        subprocess.run([tool("pg_ctl"), "-D", pgdata, "-w", "-l", str(self.log("postgres")), "-o", options, "start"],
-                       check=True, stdout=subprocess.DEVNULL)
-        subprocess.run([tool("createdb"), "-h", DATABASE_HOST, "-p", port, "-U", user, name], check=True,
-                       env={**os.environ, "PGPASSWORD": get("password")})
+        subprocess.run(
+            [
+                tool("pg_ctl"),
+                "-D",
+                pgdata,
+                "-w",
+                "-l",
+                str(self.log("postgres")),
+                "-o",
+                options,
+                "start",
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            [tool("createdb"), "-h", DATABASE_HOST, "-p", port, "-U", user, name],
+            check=True,
+            env={**os.environ, "PGPASSWORD": get("password")},
+        )
 
     def url(self) -> str:
         if "backend-health-promise" in self.profile.sections:
@@ -178,6 +240,7 @@ class Run:
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self, *args):
                 return None
+
         try:
             return urllib.request.build_opener(NoRedirect).open(url, timeout=5).status
         except urllib.error.HTTPError as e:
@@ -193,16 +256,28 @@ class Run:
         while time.monotonic() < deadline:
             done = {name: p.poll() for name, p in self.processes.items()}
             for name, code in done.items():
-                if code not in (None, 0) or (code == 0 and name not in ("release", "after-start")):
+                if code not in (None, 0) or (
+                    code == 0 and name not in ("release", "after-start")
+                ):
                     return f"{name} exited with {code}"
             last = self.status(url)
             answers = isinstance(last, int) and last < 400
-            if answers and done.get("release", 0) == 0 and done.get("after-start", 0) == 0:
+            if (
+                answers
+                and done.get("release", 0) == 0
+                and done.get("after-start", 0) == 0
+            ):
                 print(f"ok    {url}: {last}")
                 return None
             time.sleep(2)
-        pending = [name for name in ("release", "after-start") if self.processes.get(name) and done[name] is None]
-        return f"after {timeout} s: {url} says {last}" + (f", still running: {', '.join(pending)}" if pending else "")
+        pending = [
+            name
+            for name in ("release", "after-start")
+            if self.processes.get(name) and done[name] is None
+        ]
+        return f"after {timeout} s: {url} says {last}" + (
+            f", still running: {', '.join(pending)}" if pending else ""
+        )
 
     def stop(self) -> None:
         for process in self.processes.values():
@@ -218,8 +293,11 @@ class Run:
 
     def run(self, timeout: int) -> int:
         self.prepare()
-        names = [s[len("process-"):-len("-script")] for s in self.profile.sections
-                 if s.startswith("process-") and s.endswith("-script")]
+        names = [
+            s[len("process-") : -len("-script")]
+            for s in self.profile.sections
+            if s.startswith("process-") and s.endswith("-script")
+        ]
         print("processes:", " ".join(names), flush=True)
         for name in names:
             self.start(name, self.profile.get(f"process-{name}", "command-line"))
@@ -229,7 +307,9 @@ class Run:
         print(f"FAILED: {failure}")
         for name in self.processes:
             print(f"--- {name}")
-            print("\n".join(self.log(name).read_text(errors="replace").splitlines()[-25:]))
+            print(
+                "\n".join(self.log(name).read_text(errors="replace").splitlines()[-25:])
+            )
         return 1
 
 

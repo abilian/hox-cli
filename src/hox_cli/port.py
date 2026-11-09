@@ -34,11 +34,22 @@ class PortError(Exception):
 
 
 # The catalog's presentation layer and Hop3's own checks: not part of the recipe.
-OVERLAY = re.compile(r"catalog\.toml|readme(-\w+)?\.md|icon\.\w+|check\.py|screenshots/.*")
+OVERLAY = re.compile(
+    r"catalog\.toml|readme(-\w+)?\.md|icon\.\w+|check\.py|screenshots/.*"
+)
 
 # What the hop3 stack does without a word from the recipe, or what doesn't apply
 # on SlapOS; any other section without a mapper (SECTIONS) is reported.
-IGNORED = {"metadata", "test", "port", "domains", "deploy", "backup", "limits", "contexts"}
+IGNORED = {
+    "metadata",
+    "test",
+    "port",
+    "domains",
+    "deploy",
+    "backup",
+    "limits",
+    "contexts",
+}
 
 PIP_INSTALL = "pip install -r requirements.txt"
 
@@ -79,12 +90,16 @@ class Release:
     python: str
     recipe: Path  # the recipe's directory
     files: dict[str, str]  # the recipe's files, relative to it: their md5
-    generated: dict[str, str] = field(default_factory=dict)  # what the port adds to them: their text
+    generated: dict[str, str] = field(
+        default_factory=dict
+    )  # what the port adds to them: their text
     commands: list[str] = field(default_factory=list)  # run in the build
     toolchain: str = ""
     node: bool = False  # the commands need Node
     go: str = ""  # the app is built with this Go component
-    prebuilt: bool = False  # the recipe fetches a binary: provisional, SlapOS builds from source
+    prebuilt: bool = (
+        False  # the recipe fetches a binary: provisional, SlapOS builds from source
+    )
     egg: str | None = None  # the app's distribution, when installed from its source
     pins: list[Pin] = field(default_factory=list)
     eggs: list[str] = field(default_factory=list)
@@ -95,7 +110,11 @@ class Release:
     # (an app that checks the Host header has to trust it), then what the
     # recipe asks for. $${...}: substituted in the instance, not at build time.
     environment: list[str] = field(
-        default_factory=lambda: ["HOST_NAME=$DOMAIN", "HOP3_PUBLIC_URL=$URL", "HOP3_BACKEND_URL=$${app-parameters:url}"]
+        default_factory=lambda: [
+            "HOST_NAME=$DOMAIN",
+            "HOP3_PUBLIC_URL=$URL",
+            "HOP3_BACKEND_URL=$${app-parameters:url}",
+        ]
     )
     secrets: list[str] = field(default_factory=list)
     volumes: list[str] = field(default_factory=list)  # "name target"
@@ -104,7 +123,9 @@ class Release:
     database: bool = False
     mariadb: bool = False
     composer: bool = False  # the build runs composer: stack/hop3/composer.cfg
-    notes: list[str] = field(default_factory=list)  # what wasn't mapped, or needs a look
+    notes: list[str] = field(
+        default_factory=list
+    )  # what wasn't mapped, or needs a look
 
 
 def pypi_files(name: str, version: str) -> list[str]:
@@ -118,26 +139,65 @@ def pypi_files(name: str, version: str) -> list[str]:
 
 
 def uv_compile(pyproject: Path, python: str) -> str:
-    done = subprocess.run(["uv", "pip", "compile", str(pyproject), "--python-version", python,
-                           "--python-platform", "x86_64-unknown-linux-gnu", "--no-header", "--no-annotate", "-q"],
-                          capture_output=True, text=True, check=False)
+    done = subprocess.run(
+        [
+            "uv",
+            "pip",
+            "compile",
+            str(pyproject),
+            "--python-version",
+            python,
+            "--python-platform",
+            "x86_64-unknown-linux-gnu",
+            "--no-header",
+            "--no-annotate",
+            "-q",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     if done.returncode:
         raise PortError(f"uv pip compile {pyproject}: {done.stderr.strip()}")
     return done.stdout
 
 
 def uv_hashes(pins: list[Pin], python: str) -> str:
-    done = subprocess.run(["uv", "pip", "compile", "-", "--no-deps", "--generate-hashes", "--python-version", python,
-                           "--python-platform", "x86_64-unknown-linux-gnu", "--no-header", "--no-annotate", "-q"],
-                          input="".join(f"{p.name}=={p.version}\n" for p in pins),
-                          capture_output=True, text=True, check=False)
+    done = subprocess.run(
+        [
+            "uv",
+            "pip",
+            "compile",
+            "-",
+            "--no-deps",
+            "--generate-hashes",
+            "--python-version",
+            python,
+            "--python-platform",
+            "x86_64-unknown-linux-gnu",
+            "--no-header",
+            "--no-annotate",
+            "-q",
+        ],
+        input="".join(f"{p.name}=={p.version}\n" for p in pins),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     if done.returncode:
         raise PortError(f"uv pip compile --generate-hashes: {done.stderr.strip()}")
     return done.stdout
 
 
-def port(recipe: Path, python: str, pypi: PyPI = pypi_files, source: Path | None = None,
-         resolve: Resolve = uv_compile, venv: bool = False, hashes: Hashes = uv_hashes) -> Release:
+def port(
+    recipe: Path,
+    python: str,
+    pypi: PyPI = pypi_files,
+    source: Path | None = None,
+    resolve: Resolve = uv_compile,
+    venv: bool = False,
+    hashes: Hashes = uv_hashes,
+) -> Release:
     """The release for the recipe in `recipe` (the directory of its hop3.toml).
 
     An app without a requirements.txt is installed from its source, which the recipe
@@ -148,14 +208,25 @@ def port(recipe: Path, python: str, pypi: PyPI = pypi_files, source: Path | None
     if "toolchain" not in build and source is not None and (source / "go.mod").exists():
         build["toolchain"] = "go"
     meta = spec["metadata"]
-    files = sorted(f for f in (str(p.relative_to(recipe)) for p in recipe.rglob("*") if p.is_file())
-                   if not OVERLAY.fullmatch(f))
-    release = Release(meta["id"], meta.get("title", meta["id"]), meta.get("version", ""), python, recipe,
-                      {f: hashlib.md5((recipe / f).read_bytes()).hexdigest() for f in files})
+    files = sorted(
+        f
+        for f in (str(p.relative_to(recipe)) for p in recipe.rglob("*") if p.is_file())
+        if not OVERLAY.fullmatch(f)
+    )
+    release = Release(
+        meta["id"],
+        meta.get("title", meta["id"]),
+        meta.get("version", ""),
+        python,
+        recipe,
+        {f: hashlib.md5((recipe / f).read_bytes()).hexdigest() for f in files},
+    )
     for name, mapper in SECTIONS.items():
         if name in spec:
             mapper(release, spec[name])
-    release.notes += [f"[{s}]: not mapped" for s in spec if s not in SECTIONS and s not in IGNORED]
+    release.notes += [
+        f"[{s}]: not mapped" for s in spec if s not in SECTIONS and s not in IGNORED
+    ]
     if release.go and source is not None:
         release.go = _go_component((source / "go.mod").read_text())
     if release.toolchain != "python":
@@ -166,7 +237,9 @@ def port(recipe: Path, python: str, pypi: PyPI = pypi_files, source: Path | None
         requirements = (recipe / "requirements.txt").read_text()
     else:
         requirements = _from_source(release, source, resolve)
-    release.pins, release.eggs = _requirements(requirements, python, pypi, frozenset() if venv else BUILDOUT_TOOLS)
+    release.pins, release.eggs = _requirements(
+        requirements, python, pypi, frozenset() if venv else BUILDOUT_TOOLS
+    )
     if venv:
         release.venv = True
         release.requirements = hashes(release.pins, python)
@@ -176,36 +249,55 @@ def port(recipe: Path, python: str, pypi: PyPI = pypi_files, source: Path | None
 
 def _from_source(release: Release, source: Path | None, resolve: Resolve) -> str:
     if source is None:
-        raise PortError("no requirements.txt: for an app installed from its source, "
-                        "give its unpacked release with --source")
+        raise PortError(
+            "no requirements.txt: for an app installed from its source, "
+            "give its unpacked release with --source"
+        )
     pyproject = source / "pyproject.toml"
     if not pyproject.exists():
         raise PortError(f"{source}: no pyproject.toml")
     release.egg = tomllib.loads(pyproject.read_text())["project"]["name"]
-    release.notes.append(f"{release.egg} from its source: its dependencies are pinned as resolved today")
+    release.notes.append(
+        f"{release.egg} from its source: its dependencies are pinned as resolved today"
+    )
     return resolve(pyproject, release.python)
 
 
 def _build(release: Release, build: dict) -> None:
     if build.get("builder", "local") != "local":
-        raise PortError(f"builder {build['builder']!r}: only the local builder is supported")
+        raise PortError(
+            f"builder {build['builder']!r}: only the local builder is supported"
+        )
     toolchain = build.get("toolchain")
     if toolchain not in ("python", "go", "generic", "node", "php"):
-        raise PortError(f"toolchain {toolchain!r}: only python, go, generic, node and php are supported so far "
-                        "(a Go recipe that doesn't name it: give its source with --source)")
+        raise PortError(
+            f"toolchain {toolchain!r}: only python, go, generic, node and php are supported so far "
+            "(a Go recipe that doesn't name it: give its source with --source)"
+        )
     release.toolchain = toolchain
     install = _commands(build.get("build"))
     release.go = GO_VERSIONS[0] if toolchain == "go" else ""
     release.prebuilt = toolchain == "generic"
     if toolchain == "python" and install not in ([], [PIP_INSTALL]):
-        raise PortError(f"[build] build = {install}: only {PIP_INSTALL!r} is supported so far")
+        raise PortError(
+            f"[build] build = {install}: only {PIP_INSTALL!r} is supported so far"
+        )
     if release.prebuilt:
-        release.notes.append("toolchain 'generic': provisional, runs the binary the recipe fetches, "
-                             "until a variant of the recipe builds it from source")
-    release.commands = (_commands(build.get("before-build")) + ([] if toolchain == "python" else install)
-                        + _commands(build.get("after-build")))
-    release.node = toolchain == "node" or any(NODE_COMMAND.match(c) for c in release.commands)
-    release.composer = toolchain == "php" and any(COMPOSER_COMMAND.match(c) for c in release.commands)
+        release.notes.append(
+            "toolchain 'generic': provisional, runs the binary the recipe fetches, "
+            "until a variant of the recipe builds it from source"
+        )
+    release.commands = (
+        _commands(build.get("before-build"))
+        + ([] if toolchain == "python" else install)
+        + _commands(build.get("after-build"))
+    )
+    release.node = toolchain == "node" or any(
+        NODE_COMMAND.match(c) for c in release.commands
+    )
+    release.composer = toolchain == "php" and any(
+        COMPOSER_COMMAND.match(c) for c in release.commands
+    )
     if toolchain == "php":
         release.processes |= {"fpm": ["hop3-php-fpm"], "web": ["hop3-php-web"]}
         release.environment.append("PHPRC=${hop3-php-ini:output}")
@@ -215,7 +307,9 @@ def _build(release: Release, build: dict) -> None:
 def _env(release: Release, env: dict) -> None:
     for key, value in env.items():
         if key == "computed":
-            release.environment += [f"{k}={_shell(_variables(v))}" for k, v in value.items()]
+            release.environment += [
+                f"{k}={_shell(_variables(v))}" for k, v in value.items()
+            ]
         elif key.startswith("_"):
             continue
         elif isinstance(value, str):
@@ -232,15 +326,21 @@ def _env(release: Release, env: dict) -> None:
 
 def _secret(release: Release, key: str, spec: dict) -> None:
     kind = spec["generate"]
-    if "prefix" in spec:  # the stack's secret under its own name, the app's variable built from it
+    if (
+        "prefix" in spec
+    ):  # the stack's secret under its own name, the app's variable built from it
         secret = f"HOP3_SECRET_{key}"
         release.environment.append(f"{key}={_shell(spec['prefix'] + '$' + secret)}")
         key, spec = secret, {k: v for k, v in spec.items() if k != "prefix"}
     release.secrets.append(f"{key}:{kind}" if kind in ENCODED_SECRETS else key)
     if kind not in ENCODED_SECRETS | {"password"}:
-        release.notes.append(f"[env] {key}: generated as a 32-character password, not {kind!r}")
+        release.notes.append(
+            f"[env] {key}: generated as a 32-character password, not {kind!r}"
+        )
     elif kind != "password" and spec.get("length", 32) != 32:
-        release.notes.append(f"[env] {key}: generated from 32 bytes, not {spec['length']}")
+        release.notes.append(
+            f"[env] {key}: generated from 32 bytes, not {spec['length']}"
+        )
 
 
 def _run(release: Release, run: dict) -> None:
@@ -255,15 +355,21 @@ def _admin(release: Release, admin: dict) -> None:
     release.secrets.append("HOP3_ADMIN_PASSWORD")
     if "username" in admin:
         release.environment.append(f"HOP3_ADMIN_USER={_shell(admin['username'])}")
-    if admin.get("email") == "operator":  # Hop3's operator: the create scripts require an address
+    if (
+        admin.get("email") == "operator"
+    ):  # Hop3's operator: the create scripts require an address
         release.environment.append(f"HOP3_ADMIN_EMAIL=admin@{release.name}.invalid")
-        release.notes.append(f"[admin] email: admin@{release.name}.invalid, unless HOP3_ADMIN_EMAIL is an instance parameter")
+        release.notes.append(
+            f"[admin] email: admin@{release.name}.invalid, unless HOP3_ADMIN_EMAIL is an instance parameter"
+        )
     elif "email" in admin:
         release.environment.append(f"HOP3_ADMIN_EMAIL={_shell(admin['email'])}")
     create = admin.get("create")
     if not create:  # the app makes its admin from the HOP3_ADMIN_* variables
         return
-    if "\n" in create.strip() or "${" in create:  # in a script: buildout would split or substitute it
+    if (
+        "\n" in create.strip() or "${" in create
+    ):  # in a script: buildout would split or substitute it
         release.generated[ADMIN_SCRIPT] = create
         release.files[ADMIN_SCRIPT] = hashlib.md5(create.encode()).hexdigest()
         create = f"bash {ADMIN_SCRIPT}"
@@ -276,7 +382,11 @@ def _probe(release: Release, probe: dict) -> None:
 
 def _volumes(release: Release, volumes: list[dict]) -> None:
     # A scratch volume is reset by every deploy, as the copy of the build is.
-    release.volumes = [f"{v['name']} {v['target']}" for v in volumes if v.get("type", "persist") == "persist"]
+    release.volumes = [
+        f"{v['name']} {v['target']}"
+        for v in volumes
+        if v.get("type", "persist") == "persist"
+    ]
 
 
 def _addons(release: Release, addons: list[dict]) -> None:
@@ -290,7 +400,9 @@ def _addons(release: Release, addons: list[dict]) -> None:
 
 
 def _proxy(release: Release, proxy: dict) -> None:
-    if release.toolchain == "php" and proxy.keys() == {"deny"}:  # for nginx in stack/hop3/php.cfg
+    if release.toolchain == "php" and proxy.keys() == {
+        "deny"
+    }:  # for nginx in stack/hop3/php.cfg
         release.environment.append(f"HOP3_PROXY_DENY={_shell(' '.join(proxy['deny']))}")
     else:
         release.notes.append(f"[proxy] {proxy}: not mapped")
@@ -319,44 +431,86 @@ def software_cfg(release: Release) -> str:
     lines = [
         f"# {release.title} {release.version}, from its Hop3 recipe in hop3/,",
         "# by `hox port`: change the recipe and port it again rather than edit this file.",
-        *(["# Provisional: runs the binary the recipe fetches, where a SlapOS release builds",
-           "# from source. To replace with a port of a variant of the recipe that does."] if release.prebuilt else []),
+        *(
+            [
+                "# Provisional: runs the binary the recipe fetches, where a SlapOS release builds",
+                "# from source. To replace with a port of a variant of the recipe that does.",
+            ]
+            if release.prebuilt
+            else []
+        ),
         "[buildout]",
         "extends =",
         *(["  ../../component/golang/buildout.cfg"] if release.go else []),
         *(["  ../../component/nodejs/buildout.cfg"] if release.node else []),
-        *(["  ../../component/apache-php/buildout.cfg", "  ../../component/nginx/buildout.cfg"]
-          if release.toolchain == "php" else []),
-        *(["  ../../component/postgresql/buildout.cfg"] if release.database or release.toolchain == "php" else []),
+        *(
+            [
+                "  ../../component/apache-php/buildout.cfg",
+                "  ../../component/nginx/buildout.cfg",
+            ]
+            if release.toolchain == "php"
+            else []
+        ),
+        *(
+            ["  ../../component/postgresql/buildout.cfg"]
+            if release.database or release.toolchain == "php"
+            else []
+        ),
         *(["  ../../component/mariadb/buildout.cfg"] if release.mariadb else []),
         *(f"  ../../component/{c}/buildout.cfg" for c in _components(release)),
         "  ../../stack/hop3/buildout.cfg",
         *(["  ../../stack/hop3/php.cfg"] if release.toolchain == "php" else []),
         *(["  ../../stack/hop3/composer.cfg"] if release.composer else []),
-        *(["  ../../stack/python-app/venv.cfg", "  ../../stack/hop3/venv.cfg"] if release.venv
-          else ["  ./versions.cfg"] if release.pins else []),
+        *(
+            ["  ../../stack/python-app/venv.cfg", "  ../../stack/hop3/venv.cfg"]
+            if release.venv
+            else ["  ./versions.cfg"]
+            if release.pins
+            else []
+        ),
         "",
         "[python3]",
         f"<= python{release.python}",
         "",
         *(["[nodejs]", f"<= nodejs-{NODE_VERSION}", ""] if release.node else []),
-        *(["[nodejs-headers]", f"<= nodejs-headers-{NODE_VERSION}", "",
-           "# Native modules from their source, where npm would fetch a prebuilt binary.",
-           "[python-app-git]", "environment +=", "  npm_config_build_from_source=true",
-           "  npm_config_tarball=${nodejs-headers:target}", "  NODE_GYP_FORCE_PYTHON=${python3:location}/bin/python3",
-           ""] if release.toolchain == "node" else []),
+        *(
+            [
+                "[nodejs-headers]",
+                f"<= nodejs-headers-{NODE_VERSION}",
+                "",
+                "# Native modules from their source, where npm would fetch a prebuilt binary.",
+                "[python-app-git]",
+                "environment +=",
+                "  npm_config_build_from_source=true",
+                "  npm_config_tarball=${nodejs-headers:target}",
+                "  NODE_GYP_FORCE_PYTHON=${python3:location}/bin/python3",
+                "",
+            ]
+            if release.toolchain == "node"
+            else []
+        ),
         "[hop3]",
         "base = ${:_profile_base_location_}/hop3",
         "files =",
         *(f"  {f} {md5}" for f, md5 in release.files.items()),
         "commands =",
         *(f"  {c}" for c in release.commands),
-        *([f"tools = {_tools(release)}"] if release.go or release.node or release.toolchain == "php" else []),
+        *(
+            [f"tools = {_tools(release)}"]
+            if release.go or release.node or release.toolchain == "php"
+            else []
+        ),
         "",
-        *(["[python-app-requirements]",
-           "url = ${:_profile_base_location_}/requirements.txt",
-           f"md5sum = {hashlib.md5(release.requirements.encode()).hexdigest()}",
-           ""] if release.venv else []),
+        *(
+            [
+                "[python-app-requirements]",
+                "url = ${:_profile_base_location_}/requirements.txt",
+                f"md5sum = {hashlib.md5(release.requirements.encode()).hexdigest()}",
+                "",
+            ]
+            if release.venv
+            else []
+        ),
         "[python-app]",
         f"name = {release.name}",
         *([f"egg = {release.egg}"] if release.egg else []),
@@ -367,7 +521,11 @@ def software_cfg(release: Release) -> str:
         *([f"secrets = {' '.join(release.secrets)}"] if release.secrets else []),
         "environment =",
         *(f"  {e}" for e in release.environment),
-        *(["volumes =", *(f"  {v}" for v in release.volumes)] if release.volumes else []),
+        *(
+            ["volumes =", *(f"  {v}" for v in release.volumes)]
+            if release.volumes
+            else []
+        ),
         "",
         "[python-app-processes]",
         *(f"{k} = {v}" for k, v in processes.items()),
@@ -413,24 +571,40 @@ def _components(release: Release) -> list[str]:
 
 
 def _eggs(release: Release) -> list[str]:
-    return ["eggs =",
-            *(["  ${python-app-develop:egg}"] if release.egg else []),
-            *(f"  ${{{COMPONENTS[e]}:egg}}" if e in COMPONENTS else f"  {e}" for e in release.eggs)]
+    return [
+        "eggs =",
+        *(["  ${python-app-develop:egg}"] if release.egg else []),
+        *(
+            f"  ${{{COMPONENTS[e]}:egg}}" if e in COMPONENTS else f"  {e}"
+            for e in release.eggs
+        ),
+    ]
 
 
 def _venv_options(release: Release) -> list[str]:
     compiled = _compiled(release)
-    return [*([f"no-binary = {' '.join(compiled)}"] if compiled else []),
-            *([f"build-libraries = {' '.join(f'${{{c}:location}}' for c in _components(release))}"]
-              if _components(release) else []),
-            f"uploaded-prior-to = {release.uploaded_prior_to}"]
+    return [
+        *([f"no-binary = {' '.join(compiled)}"] if compiled else []),
+        *(
+            [
+                f"build-libraries = {' '.join(f'${{{c}:location}}' for c in _components(release))}"
+            ]
+            if _components(release)
+            else []
+        ),
+        f"uploaded-prior-to = {release.uploaded_prior_to}",
+    ]
 
 
 def _tools(release: Release) -> str:
     """What the build finds on PATH, before what the stack gives every release."""
     tools = [f"${{golang{release.go}:location}}/bin"] if release.go else []
     tools += ["${nodejs:location}/bin"] if release.node else []
-    tools += ["${gcc:prefix}/bin", "${binutils:location}/bin"] if release.toolchain == "node" else []
+    tools += (
+        ["${gcc:prefix}/bin", "${binutils:location}/bin"]
+        if release.toolchain == "node"
+        else []
+    )
     tools += ["${hop3-composer:location}"] if release.composer else []
     tools += ["${hop3-php:tools}"] if release.toolchain == "php" else []
     return ":".join([*tools, "${:base-tools}"])
@@ -444,7 +618,9 @@ def _go_component(go_mod: str) -> str:
     for version in GO_VERSIONS:
         if _minor(version) >= _minor(asked[1]):
             return version
-    raise PortError(f"go.mod asks for Go {asked[1]}: SlapOS's newest component here is {GO_VERSIONS[-1]}")
+    raise PortError(
+        f"go.mod asks for Go {asked[1]}: SlapOS's newest component here is {GO_VERSIONS[-1]}"
+    )
 
 
 def _minor(version: str) -> int:
@@ -454,7 +630,10 @@ def _minor(version: str) -> int:
 def _commands(value: str | list[str] | None) -> list[str]:
     """A command or a list of them. Each one line, without ${…}: buildout would
     split the one and substitute the other (write $NAME)."""
-    commands = [c.strip() for c in ([] if value is None else [value] if isinstance(value, str) else value)]
+    commands = [
+        c.strip()
+        for c in ([] if value is None else [value] if isinstance(value, str) else value)
+    ]
     for command in commands:
         if "\n" in command or "${" in command:
             raise PortError(f"{command!r}: commands must be one line, without ${{…}}")
@@ -463,11 +642,14 @@ def _commands(value: str | list[str] | None) -> list[str]:
 
 def _packages(release: Release, section: str, value: dict) -> None:
     if value.get("packages"):
-        release.notes.append(f"[{section}] packages = {value['packages']}: needs SlapOS components")
+        release.notes.append(
+            f"[{section}] packages = {value['packages']}: needs SlapOS components"
+        )
 
 
-def _requirements(requirements: str, python: str, pypi: PyPI,
-                  skip: Collection[str]) -> tuple[list[Pin], list[str]]:
+def _requirements(
+    requirements: str, python: str, pypi: PyPI, skip: Collection[str]
+) -> tuple[list[Pin], list[str]]:
     """The pins of compiled requirements, and the eggs to install (all of them, as
     `pip install -r` does, but those in `skip`: buildout's own, whose versions are SlapOS's)."""
     env = environment(python)
@@ -478,17 +660,29 @@ def _requirements(requirements: str, python: str, pypi: PyPI,
         if not line:
             continue
         if line.startswith("-"):
-            raise PortError(f"requirements: {line!r}: only pinned requirements are supported")
+            raise PortError(
+                f"requirements: {line!r}: only pinned requirements are supported"
+            )
         req = Requirement(line)
-        if (req.marker and not req.marker.evaluate(env)) or canonicalize_name(req.name) in skip:
+        if (req.marker and not req.marker.evaluate(env)) or canonicalize_name(
+            req.name
+        ) in skip:
             continue
         version = next((s.version for s in req.specifier if s.operator == "=="), None)
         if version is None:
             raise PortError(f"requirements: {line!r} isn't pinned")
         files = pypi(req.name, version)
-        pins.append(Pin(req.name, version, any(f.endswith((".tar.gz", ".zip")) for f in files),
-                        wheel_kind([f for f in files if f.endswith(".whl")], supported)))
-        eggs.append(f"{req.name}[{','.join(sorted(req.extras))}]" if req.extras else req.name)
+        pins.append(
+            Pin(
+                req.name,
+                version,
+                any(f.endswith((".tar.gz", ".zip")) for f in files),
+                wheel_kind([f for f in files if f.endswith(".whl")], supported),
+            )
+        )
+        eggs.append(
+            f"{req.name}[{','.join(sorted(req.extras))}]" if req.extras else req.name
+        )
     return sorted(pins, key=lambda p: p.name.lower()), eggs
 
 
@@ -496,7 +690,9 @@ def _variables(value: str) -> str:
     """${NAME} as $NAME, which buildout leaves alone, where the shell reads the same."""
     converted = re.sub(r"\$\{(\w+)\}(?!\w)", r"$\1", value)
     if "${" in converted:
-        raise PortError(f"{value!r}: a ${{…}} followed by a name character can't be written for buildout")
+        raise PortError(
+            f"{value!r}: a ${{…}} followed by a name character can't be written for buildout"
+        )
     return converted
 
 
@@ -504,4 +700,6 @@ def _shell(value: str) -> str:
     """A value for a shell assignment, $NAME expanded."""
     if "$" not in value:
         return shlex.quote(value)
-    return '"' + value.replace("\\", "\\\\").replace('"', '\\"').replace("`", "\\`") + '"'
+    return (
+        '"' + value.replace("\\", "\\\\").replace('"', '\\"').replace("`", "\\`") + '"'
+    )
