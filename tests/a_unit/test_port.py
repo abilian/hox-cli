@@ -369,7 +369,8 @@ def go_source(tmp_path):
 
 
 def _no_pypi(name, version):
-    raise AssertionError(f"{name} {version}: a Go app has no eggs")
+    msg = f"{name} {version}: a Go app has no eggs"
+    raise AssertionError(msg)
 
 
 @pytest.mark.parametrize(

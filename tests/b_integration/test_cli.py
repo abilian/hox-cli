@@ -170,10 +170,12 @@ def test_deploy_refuses_an_unpushed_branch_before_touching_the_master(
     _, slap = master
 
     def unpushed(sw):
-        raise DevError(f"{sw.branch}: push it first")
+        msg = f"{sw.branch}: push it first"
+        raise DevError(msg)
 
     def touched(*args):
-        raise AssertionError("the master was touched")
+        msg = "the master was touched"
+        raise AssertionError(msg)
 
     monkeypatch.setattr(cli.dev, "require_pushed", unpushed)
     monkeypatch.setattr(cli, "_make_allocatable", touched)

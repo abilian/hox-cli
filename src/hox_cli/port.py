@@ -4,6 +4,8 @@ software release on the hop3 stack of slapos_abilian_edge (stack/hop3/).
 port() maps the recipe to a Release, a section of hop3.toml at a time;
 software_cfg(), versions_cfg() and write() turn the Release into files."""
 
+from __future__ import annotations
+
 import hashlib
 import re
 import shlex
@@ -133,7 +135,8 @@ def pypi_files(name: str, version: str) -> list[str]:
 
     response = httpx2.get(f"https://pypi.org/pypi/{name}/{version}/json", timeout=30)
     if response.status_code == 404:
-        raise PortError(f"{name} {version} is not on PyPI")
+        msg = f"{name} {version} is not on PyPI"
+        raise PortError(msg)
     response.raise_for_status()
     return [f["filename"] for f in response.json()["urls"]]
 
@@ -158,7 +161,8 @@ def uv_compile(pyproject: Path, python: str) -> str:
         check=False,
     )
     if done.returncode:
-        raise PortError(f"uv pip compile {pyproject}: {done.stderr.strip()}")
+        msg = f"uv pip compile {pyproject}: {done.stderr.strip()}"
+        raise PortError(msg)
     return done.stdout
 
 
@@ -185,7 +189,8 @@ def uv_hashes(pins: list[Pin], python: str) -> str:
         check=False,
     )
     if done.returncode:
-        raise PortError(f"uv pip compile --generate-hashes: {done.stderr.strip()}")
+        msg = f"uv pip compile --generate-hashes: {done.stderr.strip()}"
+        raise PortError(msg)
     return done.stdout
 
 
@@ -231,7 +236,8 @@ def port(
         release.go = _go_component((source / "go.mod").read_text())
     if release.toolchain != "python":
         if venv:
-            raise PortError(f"{release.name}: --venv is for a Python app")
+            msg = f"{release.name}: --venv is for a Python app"
+            raise PortError(msg)
         return release
     if (recipe / "requirements.txt").exists():
         requirements = (recipe / "requirements.txt").read_text()
@@ -249,13 +255,15 @@ def port(
 
 def _from_source(release: Release, source: Path | None, resolve: Resolve) -> str:
     if source is None:
-        raise PortError(
+        msg = (
             "no requirements.txt: for an app installed from its source, "
             "give its unpacked release with --source"
         )
+        raise PortError(msg)
     pyproject = source / "pyproject.toml"
     if not pyproject.exists():
-        raise PortError(f"{source}: no pyproject.toml")
+        msg = f"{source}: no pyproject.toml"
+        raise PortError(msg)
     release.egg = tomllib.loads(pyproject.read_text())["project"]["name"]
     release.notes.append(
         f"{release.egg} from its source: its dependencies are pinned as resolved today"
@@ -265,23 +273,22 @@ def _from_source(release: Release, source: Path | None, resolve: Resolve) -> str
 
 def _build(release: Release, build: dict) -> None:
     if build.get("builder", "local") != "local":
-        raise PortError(
-            f"builder {build['builder']!r}: only the local builder is supported"
-        )
+        msg = f"builder {build['builder']!r}: only the local builder is supported"
+        raise PortError(msg)
     toolchain = build.get("toolchain")
-    if toolchain not in ("python", "go", "generic", "node", "php"):
-        raise PortError(
+    if toolchain not in {"python", "go", "generic", "node", "php"}:
+        msg = (
             f"toolchain {toolchain!r}: only python, go, generic, node and php are supported so far "
             "(a Go recipe that doesn't name it: give its source with --source)"
         )
+        raise PortError(msg)
     release.toolchain = toolchain
     install = _commands(build.get("build"))
     release.go = GO_VERSIONS[0] if toolchain == "go" else ""
     release.prebuilt = toolchain == "generic"
     if toolchain == "python" and install not in ([], [PIP_INSTALL]):
-        raise PortError(
-            f"[build] build = {install}: only {PIP_INSTALL!r} is supported so far"
-        )
+        msg = f"[build] build = {install}: only {PIP_INSTALL!r} is supported so far"
+        raise PortError(msg)
     if release.prebuilt:
         release.notes.append(
             "toolchain 'generic': provisional, runs the binary the recipe fetches, "
@@ -316,7 +323,7 @@ def _env(release: Release, env: dict) -> None:
             release.environment.append(f"{key}={_shell(value)}")
         elif "generate" in value:
             _secret(release, key, value)
-        elif value.get("key") in ("domain", "hostname") and "from" not in value:
+        elif value.get("key") in {"domain", "hostname"} and "from" not in value:
             release.environment.append(f"{key}=$DOMAIN")
         elif value.get("key") == "name" and "from" not in value:
             release.environment.append(f"{key}={release.name}")
@@ -543,7 +550,8 @@ def write(release: Release, out: Path) -> None:
     """Write the release in `out` (software/<name>/), the recipe's files in out/hop3/."""
     cfg = out / "software.cfg"
     if cfg.exists() and "by `hox port`" not in cfg.read_text():
-        raise PortError(f"{cfg} doesn't come from hox port: give the recipe another id")
+        msg = f"{cfg} doesn't come from hox port: give the recipe another id"
+        raise PortError(msg)
     if (out / "hop3").exists():
         shutil.rmtree(out / "hop3")
     for f in release.files:
@@ -618,9 +626,8 @@ def _go_component(go_mod: str) -> str:
     for version in GO_VERSIONS:
         if _minor(version) >= _minor(asked[1]):
             return version
-    raise PortError(
-        f"go.mod asks for Go {asked[1]}: SlapOS's newest component here is {GO_VERSIONS[-1]}"
-    )
+    msg = f"go.mod asks for Go {asked[1]}: SlapOS's newest component here is {GO_VERSIONS[-1]}"
+    raise PortError(msg)
 
 
 def _minor(version: str) -> int:
@@ -636,7 +643,8 @@ def _commands(value: str | list[str] | None) -> list[str]:
     ]
     for command in commands:
         if "\n" in command or "${" in command:
-            raise PortError(f"{command!r}: commands must be one line, without ${{…}}")
+            msg = f"{command!r}: commands must be one line, without ${{…}}"
+            raise PortError(msg)
     return [c for c in commands if c]
 
 
@@ -660,9 +668,8 @@ def _requirements(
         if not line:
             continue
         if line.startswith("-"):
-            raise PortError(
-                f"requirements: {line!r}: only pinned requirements are supported"
-            )
+            msg = f"requirements: {line!r}: only pinned requirements are supported"
+            raise PortError(msg)
         req = Requirement(line)
         if (req.marker and not req.marker.evaluate(env)) or canonicalize_name(
             req.name
@@ -670,7 +677,8 @@ def _requirements(
             continue
         version = next((s.version for s in req.specifier if s.operator == "=="), None)
         if version is None:
-            raise PortError(f"requirements: {line!r} isn't pinned")
+            msg = f"requirements: {line!r} isn't pinned"
+            raise PortError(msg)
         files = pypi(req.name, version)
         pins.append(
             Pin(
@@ -690,9 +698,8 @@ def _variables(value: str) -> str:
     """${NAME} as $NAME, which buildout leaves alone, where the shell reads the same."""
     converted = re.sub(r"\$\{(\w+)\}(?!\w)", r"$\1", value)
     if "${" in converted:
-        raise PortError(
-            f"{value!r}: a ${{…}} followed by a name character can't be written for buildout"
-        )
+        msg = f"{value!r}: a ${{…}} followed by a name character can't be written for buildout"
+        raise PortError(msg)
     return converted
 
 

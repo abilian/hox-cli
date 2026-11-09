@@ -1,5 +1,7 @@
 """The `hox` command."""
 
+from __future__ import annotations
+
 import dataclasses
 import json
 import re
@@ -150,7 +152,8 @@ def port(
         with a requirements.txt in place of the versions.cfg.
     """
     if not (slapos / "stack" / "hop3").is_dir():
-        raise PortError(f"{slapos}: no stack/hop3/ (branch hop3-experiment?)")
+        msg = f"{slapos}: no stack/hop3/ (branch hop3-experiment?)"
+        raise PortError(msg)
     release = port_module.port(recipe, python, source=source, venv=venv)
     out = slapos / "software" / (f"{release.name}-venv" if venv else release.name)
     port_module.write(release, out)
@@ -440,7 +443,8 @@ def rebuild(
         return 0
     inst = status_module.require_instance(_api(config), sw)
     if inst.partition is None:
-        raise DevError(f"{sw.instance} is not allocated yet: `hox status` says why")
+        msg = f"{sw.instance} is not allocated yet: `hox status` says why"
+        raise DevError(msg)
     # Only this instance's partition: another one's failure (a release still building) isn't ours.
     if (
         node.slapgrid(f"instance --force --only-cp {inst.partition}")
@@ -502,7 +506,8 @@ def logs(
         sw = config.software_named(software)
         partition = status_module.require_instance(_api(config), sw).partition
         if partition is None:
-            raise DevError(f"{sw.instance} has no partition yet")
+            msg = f"{sw.instance} has no partition yet"
+            raise DevError(msg)
         target = f"/srv/slapgrid/{partition}/.{partition}_*.log"
     else:
         target = SOFTWARE_LOG if kind == "software" else INSTANCE_LOG
@@ -516,8 +521,9 @@ def _url(sw: Software, pinned: str | None) -> str:
 
 
 def _confirm(question: str, yes: bool) -> None:
-    if not yes and input(f"{question} [y/N] ").strip().lower() not in ("y", "yes"):
-        raise DevError("cancelled")
+    if not yes and input(f"{question} [y/N] ").strip().lower() not in {"y", "yes"}:
+        msg = "cancelled"
+        raise DevError(msg)
 
 
 @app.command
@@ -580,9 +586,8 @@ def request(
     existing = stored_request(api, name)
     if existing and existing.software_release != url:
         if not replace:
-            raise DevError(
-                f"{name} runs {existing.software_release}; the master refuses a URL change: use --replace"
-            )
+            msg = f"{name} runs {existing.software_release}; the master refuses a URL change: use --replace"
+            raise DevError(msg)
         _confirm(f"Destroy {name} and request {next_name(name)}?", yes)
         slap.request(dataclasses.replace(existing, state="destroyed"))
         print(f"{name}: destruction requested")
@@ -618,7 +623,8 @@ def destroy(name: str, *, yes: bool = False):
     config = _config()
     existing = stored_request(_api(config), name)
     if existing is None:
-        raise DevError(f"no instance {name!r} on the master")
+        msg = f"no instance {name!r} on the master"
+        raise DevError(msg)
     _confirm(f"Destroy {name} ({existing.software_release})?", yes)
     Slap.connect(config.master).request(
         dataclasses.replace(existing, state="destroyed")
@@ -630,9 +636,11 @@ def _set_state(name: str, state: str) -> None:
     config = _config()
     existing = stored_request(_api(config), name)
     if existing is None:
-        raise DevError(f"no instance {name!r} on the master")
+        msg = f"no instance {name!r} on the master"
+        raise DevError(msg)
     if existing.state == "destroyed":
-        raise DevError(f"{name} is destroyed")
+        msg = f"{name} is destroyed"
+        raise DevError(msg)
     Slap.connect(config.master).request(dataclasses.replace(existing, state=state))
     print(
         f"{name}: requested state {state}; the node acts within a minute or two (hox instances)"

@@ -1,7 +1,8 @@
 """The SlapOS master: its API (hateoas) for reads and forms, and the slap protocol."""
 
+from __future__ import annotations
+
 import re
-from collections.abc import Mapping
 from dataclasses import dataclass, field
 from urllib.parse import quote, urljoin, urlsplit
 from xml.etree import ElementTree
@@ -9,7 +10,11 @@ from xml.sax.saxutils import escape
 
 import httpx2
 
-from .config import Master
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .config import Master
+    from collections.abc import Mapping
 
 TIMEOUT = 60
 
@@ -23,8 +28,9 @@ def expand(template: str, params: Mapping[str, str | int | list]) -> str:
 
     def replace(match: re.Match) -> str:
         operator, names = match.group(1)[:1], match.group(1)[1:].split(",")
-        if operator not in ("&", "?"):
-            raise MasterError(f"unsupported URI template expression: {match.group(0)}")
+        if operator not in {"&", "?"}:
+            msg = f"unsupported URI template expression: {match.group(0)}"
+            raise MasterError(msg)
         pairs = []
         for name in names:
             explode = name.endswith("*")
@@ -52,7 +58,7 @@ class Api:
     @classmethod
     def connect(
         cls, master: Master, transport: httpx2.BaseTransport | None = None
-    ) -> "Api":
+    ) -> Api:
         client = httpx2.Client(
             cert=(str(master.cert), str(master.key)),
             timeout=TIMEOUT,
@@ -60,7 +66,8 @@ class Api:
         )
         url = _get(client, urljoin(master.url, "getHateoasUrl")).text.strip()
         if urlsplit(url).scheme != "https":
-            raise MasterError(f"getHateoasUrl returned {url!r}")
+            msg = f"getHateoasUrl returned {url!r}"
+            raise MasterError(msg)
         extensions = (
             {"sni_hostname": master.api_tls_name} if master.api_tls_name else {}
         )
@@ -74,7 +81,8 @@ class Api:
         try:
             return self._root["_links"][name]["href"]
         except KeyError:
-            raise MasterError(f"API root has no {name!r} link") from None
+            msg = f"API root has no {name!r} link"
+            raise MasterError(msg) from None
 
     def search(self, query: str, select: list[str], limit: int = 100) -> list[dict]:
         url = expand(
@@ -113,9 +121,8 @@ class Api:
         )
         if href is None:
             names = sorted({link.get("name") for link in links})
-            raise MasterError(
-                f"{relative_url} has no action {action!r}; it has: {', '.join(names)}"
-            )
+            msg = f"{relative_url} has no action {action!r}; it has: {', '.join(names)}"
+            raise MasterError(msg)
         form = self._get_json(href)["_embedded"]["_view"]
         actions = form["_actions"]
         data = {
@@ -149,18 +156,19 @@ class Api:
                 headers={"Accept": "application/hal+json"},
             )
         except httpx2.TransportError as e:
-            raise MasterError(f"POST {url}: {e}") from e
+            msg = f"POST {url}: {e}"
+            raise MasterError(msg) from e
         if response.is_error:
-            raise MasterError(
-                f"POST {url}: HTTP {response.status_code} {response.text[:200]}"
-            )
+            msg = f"POST {url}: HTTP {response.status_code} {response.text[:200]}"
+            raise MasterError(msg)
         if "json" not in response.headers.get(
             "content-type", ""
         ):  # application/json or application/hal+json
             return None  # a redirect
         body = response.json()
         if body.get("portal_status_level") == "error":
-            raise MasterError(f"POST {url}: {body.get('portal_status_message')}")
+            msg = f"POST {url}: {body.get('portal_status_message')}"
+            raise MasterError(msg)
         return body
 
 
@@ -170,11 +178,11 @@ def _get(
     try:
         response = client.get(url, extensions=extensions or {})
     except httpx2.TransportError as e:
-        raise MasterError(f"GET {url}: {e}") from e
+        msg = f"GET {url}: {e}"
+        raise MasterError(msg) from e
     if response.is_error:
-        raise MasterError(
-            f"{response.request.method} {response.url}: HTTP {response.status_code} {response.text[:200]}"
-        )
+        msg = f"{response.request.method} {response.url}: HTTP {response.status_code} {response.text[:200]}"
+        raise MasterError(msg)
     return response
 
 
@@ -262,7 +270,8 @@ def find_node(api: Api, project: str, title: str) -> ComputeNode:
     nodes = nodes_titled(api, project, title)
     if len(nodes) != 1:
         found = f"{len(nodes)} of them" if nodes else "none (`hox node-certificate`)"
-        raise MasterError(f"compute node {title!r} in {project}: {found}")
+        msg = f"compute node {title!r} in {project}: {found}"
+        raise MasterError(msg)
     return nodes[0]
 
 
@@ -307,7 +316,8 @@ def instance_xml(xml: str | None) -> dict[str, str]:
     for p in ElementTree.fromstring(xml.encode()).iter("parameter"):
         key = p.get("id")
         if key is None:
-            raise MasterError(f"instance XML: a parameter has no id: {xml[:200]}")
+            msg = f"instance XML: a parameter has no id: {xml[:200]}"
+            raise MasterError(msg)
         params[key] = p.text or ""
     return params
 
@@ -320,7 +330,7 @@ class Slap:
     @classmethod
     def connect(
         cls, master: Master, transport: httpx2.BaseTransport | None = None
-    ) -> "Slap":
+    ) -> Slap:
         client = httpx2.Client(
             cert=(str(master.cert), str(master.key)),
             timeout=TIMEOUT,
@@ -333,16 +343,16 @@ class Slap:
         try:
             return self._client.post(url, data=data)
         except httpx2.TransportError as e:
-            raise MasterError(f"POST {url}: {e}") from e
+            msg = f"POST {url}: {e}"
+            raise MasterError(msg) from e
 
     def supply(self, url: str, node: str, state: str = "available") -> None:
         response = self._post(
             "supplySupply", {"url": url, "computer_id": node, "state": state}
         )
         if response.is_error:
-            raise MasterError(
-                f"supply {url} on {node}: HTTP {response.status_code} {response.text[:200]}"
-            )
+            msg = f"supply {url} on {node}: HTTP {response.status_code} {response.text[:200]}"
+            raise MasterError(msg)
 
     def request(self, request: Request) -> bool:
         """Send an instance request. True: the master processed it; False: still provisioning (HTTP 408)."""
@@ -352,14 +362,14 @@ class Slap:
         ):  # what the master answers while it provisions, not a timeout
             return False
         if response.status_code == 500:
-            raise MasterError(
+            msg = (
                 f"request {request.reference}: HTTP 500. The master answers that to a request whose URL,"
                 " software type or filter differ from the instance's original one."
             )
+            raise MasterError(msg)
         if response.is_error:
-            raise MasterError(
-                f"request {request.reference}: HTTP {response.status_code} {response.text[:200]}"
-            )
+            msg = f"request {request.reference}: HTTP {response.status_code} {response.text[:200]}"
+            raise MasterError(msg)
         return True
 
 

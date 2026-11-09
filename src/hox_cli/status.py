@@ -1,8 +1,9 @@
 """`hox status`: what the master, the node and GitHub say, about one software or the whole system."""
 
+from __future__ import annotations
+
 import dataclasses
 import re
-from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 import httpx2
@@ -10,6 +11,10 @@ import httpx2
 from .config import Config, Software, short_ref
 from .master import Api, MasterError, quoted
 from .node import Node, NodeError, NodeFacts, Partition, System, git
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 @dataclass(frozen=True)
@@ -259,7 +264,8 @@ def require_instance(api: Api, sw: Software) -> Instance:
     """The software's instance; an error that says what to do when the master has none."""
     inst = instance(api, sw.instance)
     if inst is None:
-        raise MasterError(f"no instance {sw.instance!r} on the master (`hox request`)")
+        msg = f"no instance {sw.instance!r} on the master (`hox request`)"
+        raise MasterError(msg)
     return inst
 
 
@@ -328,9 +334,8 @@ def matrix_cells(line_view: dict) -> Iterator[tuple[str, str, dict]]:
             for field in row[1:]:
                 cell = _CELL.search(field["key"])
                 if cell is None:
-                    raise MasterError(
-                        f"Allocation Supply matrix: unexpected field {field['key']!r}"
-                    )
+                    msg = f"Allocation Supply matrix: unexpected field {field['key']!r}"
+                    raise MasterError(msg)
                 column = int(cell.group(1))
                 yield _label(row[0]), _label(header[1 + column]), field
 

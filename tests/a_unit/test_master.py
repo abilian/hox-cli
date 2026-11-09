@@ -109,7 +109,8 @@ def test_http_error_is_master_error():
 
 def test_transport_error_is_master_error():
     def handler(request):
-        raise httpx2.ConnectError("refused", request=request)
+        msg = "refused"
+        raise httpx2.ConnectError(msg, request=request)
 
     api, _ = api_with(handler)
     with pytest.raises(MasterError, match="refused"):

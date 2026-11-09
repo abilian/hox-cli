@@ -5,12 +5,17 @@ it again is harmless. What it creates shows up in the catalog after a few
 seconds (ERP5 indexes in the background): each creation waits for it.
 """
 
+from __future__ import annotations
+
 import time
 
-from .config import Config, Software
 from .dev import wait_for
 from .master import Api, ComputeNode, MasterError, Request, Slap, nodes_titled, quoted
 from .status import ALLOCABLE, matrix_cells, ticked_cells
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .config import Config, Software
 
 RE6ST_POLL_SECONDS = 30
 RE6ST_TIMEOUT_SECONDS = 45 * 60  # the registry takes 10+ minutes
@@ -23,9 +28,8 @@ def _project(api: Api, config: Config) -> dict:
         COLUMNS,
     )
     if not rows:
-        raise MasterError(
-            f"no project {config.project.reference} visible with this certificate"
-        )
+        msg = f"no project {config.project.reference} visible with this certificate"
+        raise MasterError(msg)
     return rows[0]
 
 
@@ -41,7 +45,8 @@ def node_certificate(api: Api, config: Config) -> dict[str, str]:
     """
     nodes = nodes_titled(api, config.project.reference, config.node.title)
     if len(nodes) > 1:
-        raise MasterError(f"compute node {config.node.title!r}: {len(nodes)} of them")
+        msg = f"compute node {config.node.title!r}: {len(nodes)} of them"
+        raise MasterError(msg)
     if nodes:
         api.act(nodes[0].relative_url, "revoke_slapos_certificate")
         answer = api.act(nodes[0].relative_url, "request_slapos_certificate_action")
@@ -52,9 +57,8 @@ def node_certificate(api: Api, config: Config) -> dict[str, str]:
             {"field_your_title": config.node.title},
         )
     if answer is None:
-        raise MasterError(
-            "the master answered with a redirect, not with the node's certificate"
-        )
+        msg_0 = "the master answered with a redirect, not with the node's certificate"
+        raise MasterError(msg_0)
     # The script answers with a form whose fields hold its results.
     names = {
         "reference": "your_compute_node_reference",
@@ -63,9 +67,8 @@ def node_certificate(api: Api, config: Config) -> dict[str, str]:
     }
     missing = [n for n in names.values() if n not in answer]
     if missing:
-        raise MasterError(
-            f"no {', '.join(missing)} in the master's answer; it has: {', '.join(answer)}"
-        )
+        msg = f"no {', '.join(missing)} in the master's answer; it has: {', '.join(answer)}"
+        raise MasterError(msg)
     return {name: answer[field]["default"] for name, field in names.items()}
 
 
@@ -121,9 +124,10 @@ def open_for_allocation(api: Api, node: ComputeNode, out=print) -> None:
         view="slapos_panel_view",
     )
     if scope() != "open":
-        raise MasterError(
+        msg = (
             f"{node.relative_url}: allocation scope is still {scope()!r} after the edit"
         )
+        raise MasterError(msg)
     out("node allocation scope: open now")
 
 
@@ -236,9 +240,8 @@ def make_allocatable(
             matrix_fields(api.get(line["relative_url"], "view"), cell),
         )
         if cell not in ticked_cells(api.get(line["relative_url"], "view")):
-            raise MasterError(
-                f"{line['relative_url']}: the cell for {cell} is still not ticked after the edit"
-            )
+            msg = f"{line['relative_url']}: the cell for {cell} is still not ticked after the edit"
+            raise MasterError(msg)
         out(f"cell {sw.software_type!r} x release: ticked now")
 
     if find_supplies()[0]["validation_state"] == "validated":
@@ -263,7 +266,8 @@ def matrix_fields(line_view: dict, cell: tuple[str, str]) -> dict[str, str]:
     """
     cells = list(matrix_cells(line_view))
     if not any((r, t) == cell for r, t, _ in cells):
-        raise MasterError(f"the supply line's matrix has no cell for {cell}")
+        msg = f"the supply line's matrix has no cell for {cell}"
+        raise MasterError(msg)
     fields = {}
     for release, software_type, field in cells:
         if field["field_id"] == ALLOCABLE:

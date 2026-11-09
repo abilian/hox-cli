@@ -1,5 +1,7 @@
 """hox.toml, parsed once into frozen dataclasses."""
 
+from __future__ import annotations
+
 import dataclasses
 import re
 import tomllib
@@ -98,18 +100,16 @@ class Config:
     def software_named(self, name: str | None) -> Software:
         if name is None:
             if len(self.software) != 1:
-                raise ConfigError(
-                    f"several software in {FILENAME}, name one of: {', '.join(self.software)}"
-                )
+                msg = f"several software in {FILENAME}, name one of: {', '.join(self.software)}"
+                raise ConfigError(msg)
             return next(iter(self.software.values()))
         if name in self.software:
             return self.software[name]
         for sw in self.software.values():
             if sw.instance == name:
                 return sw
-        raise ConfigError(
-            f"no software or instance {name!r} in {FILENAME} (software: {', '.join(self.software)})"
-        )
+        msg = f"no software or instance {name!r} in {FILENAME} (software: {', '.join(self.software)})"
+        raise ConfigError(msg)
 
     def url_name(self, url: str) -> str:
         """A software release URL as hox.toml knows it ("sbe branch", "sbe @ 971d944c2"), else the URL."""
@@ -127,7 +127,8 @@ def find(start: Path) -> Path:
     for directory in (start, *start.parents):
         if (directory / FILENAME).is_file():
             return directory / FILENAME
-    raise ConfigError(f"no {FILENAME} in {start} or its parents")
+    msg = f"no {FILENAME} in {start} or its parents"
+    raise ConfigError(msg)
 
 
 def load(path: Path | None = None) -> Config:
@@ -135,7 +136,8 @@ def load(path: Path | None = None) -> Config:
     try:
         data = tomllib.loads(path.read_text())
     except (OSError, tomllib.TOMLDecodeError) as e:
-        raise ConfigError(f"{path}: {e}") from e
+        msg = f"{path}: {e}"
+        raise ConfigError(msg) from e
     return parse(data, path.parent)
 
 
@@ -148,7 +150,7 @@ def parse(data: dict, root: Path) -> Config:
     def ssh_args(args: tuple[str, ...]) -> tuple[str, ...]:
         # The files of ssh's -F (config) and -i (key) resolve against hox.toml's directory.
         return tuple(
-            str(resolve(a)) if prev in ("-F", "-i") else a
+            str(resolve(a)) if prev in {"-F", "-i"} else a
             for prev, a in zip(("",) + args, args)
         )
 
@@ -169,22 +171,27 @@ def parse(data: dict, root: Path) -> Config:
             for i, c in enumerate(table.pop("checks", []))
         )
         if not all(isinstance(v, str) for v in table.get("parameters", {}).values()):
-            raise ConfigError(f"[{ctx}.parameters] values must be strings")
+            msg = f"[{ctx}.parameters] values must be strings"
+            raise ConfigError(msg)
         sw = _build(Software, {"name": name, **table, "checks": checks}, ctx)
         software[name] = dataclasses.replace(sw, checkout=resolve(sw.checkout))
     if not software:
-        raise ConfigError("[software.<name>]: at least one is required")
+        msg_0 = "[software.<name>]: at least one is required"
+        raise ConfigError(msg_0)
     if data:
-        raise ConfigError(f"unknown sections: {', '.join(data)}")
+        msg = f"unknown sections: {', '.join(data)}"
+        raise ConfigError(msg)
     return Config(root, master, project, node, software)
 
 
 def _table(data: dict, name: str) -> dict:
     if name not in data:
-        raise ConfigError(f"[{name}] is required")
+        msg = f"[{name}] is required"
+        raise ConfigError(msg)
     value = data.pop(name)
     if not isinstance(value, dict):
-        raise ConfigError(f"[{name}] must be a table")
+        msg = f"[{name}] must be a table"
+        raise ConfigError(msg)
     return value
 
 
@@ -192,7 +199,8 @@ def _build(cls, table: dict, ctx: str):
     fields = {f.name: f for f in dataclasses.fields(cls)}
     unknown = set(table) - set(fields)
     if unknown:
-        raise ConfigError(f"[{ctx}] unknown keys: {', '.join(sorted(unknown))}")
+        msg = f"[{ctx}] unknown keys: {', '.join(sorted(unknown))}"
+        raise ConfigError(msg)
     required = {
         n
         for n, f in fields.items()
@@ -200,6 +208,7 @@ def _build(cls, table: dict, ctx: str):
     }
     missing = required - set(table)
     if missing:
-        raise ConfigError(f"[{ctx}] missing keys: {', '.join(sorted(missing))}")
+        msg = f"[{ctx}] missing keys: {', '.join(sorted(missing))}"
+        raise ConfigError(msg)
     values = {k: tuple(v) if isinstance(v, list) else v for k, v in table.items()}
     return cls(**values)

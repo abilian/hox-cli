@@ -94,7 +94,8 @@ class Profile:
         if option not in options and "<" in options:
             return self.get(options["<"], option)
         if option not in options:
-            raise KeyError(f"${{{section}:{option}}}: not in the profile")
+            msg = f"${{{section}:{option}}}: not in the profile"
+            raise KeyError(msg)
         value = self.resolve(section, options[option])
         if option == "output" and "inline" in options and section not in self.written:
             self.written.add(section)
@@ -256,8 +257,8 @@ class Run:
         while time.monotonic() < deadline:
             done = {name: p.poll() for name, p in self.processes.items()}
             for name, code in done.items():
-                if code not in (None, 0) or (
-                    code == 0 and name not in ("release", "after-start")
+                if code not in {None, 0} or (
+                    code == 0 and name not in {"release", "after-start"}
                 ):
                     return f"{name} exited with {code}"
             last = self.status(url)

@@ -1,11 +1,16 @@
 """`hox build-report`: how long a software's builds took on the node, and the disk they use, as Markdown."""
 
+from __future__ import annotations
+
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
-from .config import Config, Software
 from .node import SEPARATOR, SOFTWARE_ROOT, Node, software_dir
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .config import Config, Software
 
 LOG_DIR = "/opt/slapos/log"
 SHARED = f"{SOFTWARE_ROOT}/shared"

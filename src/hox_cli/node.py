@@ -1,5 +1,7 @@
 """The compute node, over SSH, and the local git checkouts."""
 
+from __future__ import annotations
+
 import hashlib
 import re
 import shlex
@@ -7,7 +9,10 @@ import subprocess
 import time
 from collections import deque
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 SOFTWARE_ROOT = "/opt/slapgrid"
 SOFTWARE_LOG = "/opt/slapos/log/slapos-node-software.log"
@@ -95,13 +100,11 @@ class Node:
     def run(self, command: str) -> str:
         result = self._run([*self._ssh, command], capture_output=True, text=True)
         if result.returncode == SSH_FAILED:
-            raise NodeError(
-                f"{self._ssh[0]} {self._ssh[-1]}: {result.stderr.strip()[-500:].replace(chr(10), '; ')}"
-            )
+            msg = f"{self._ssh[0]} {self._ssh[-1]}: {result.stderr.strip()[-500:].replace(chr(10), '; ')}"
+            raise NodeError(msg)
         if result.returncode != 0:
-            raise NodeError(
-                f"{shlex.join(self._ssh)} {command!r}: exit {result.returncode}: {result.stderr.strip()[-500:]}"
-            )
+            msg = f"{shlex.join(self._ssh)} {command!r}: exit {result.returncode}: {result.stderr.strip()[-500:]}"
+            raise NodeError(msg)
         return result.stdout
 
     def stream(self, command: str, keep, out=print) -> tuple[int, list[str]]:
@@ -139,13 +142,12 @@ class Node:
             if code != SLAPGRID_BUSY:
                 break
             if waited >= BUSY_TIMEOUT_SECONDS:
-                raise NodeError(
-                    f"slapos node {args}: another slapos run kept the lock for {waited // 60} min"
-                )
+                msg = f"slapos node {args}: another slapos run kept the lock for {waited // 60} min"
+                raise NodeError(msg)
             out(f"another slapos run is going on, retrying in {BUSY_RETRY_SECONDS}s")
             self._sleep(BUSY_RETRY_SECONDS)
             waited += BUSY_RETRY_SECONDS
-        if code not in (SLAPGRID_OK, SLAPGRID_PROMISE_FAIL):
+        if code not in {SLAPGRID_OK, SLAPGRID_PROMISE_FAIL}:
             what = "ssh failed" if code == SSH_FAILED else f"exit {code}"
             raise NodeError(
                 f"slapos node {args}: {what}; its last lines:\n" + "\n".join(last)
@@ -196,7 +198,7 @@ def parse_system(output: str) -> System:
         # EXITED: only -on-watch services must stay up, the others run once or wait their turn.
         if state == "RUNNING":
             running[partition] = running.get(partition, 0) + 1
-        elif program.endswith("-on-watch") or state not in ("EXITED", "STOPPED"):
+        elif program.endswith("-on-watch") or state not in {"EXITED", "STOPPED"}:
             down.setdefault(partition, []).append(service_name(program))
     memory_kb: dict[str, int] = {}
     for user, rss in (line.split() for line in processes.splitlines()):
@@ -298,5 +300,6 @@ def git(checkout: Path, *args: str) -> str:
         ["git", "-C", str(checkout), *args], capture_output=True, text=True
     )
     if result.returncode != 0:
-        raise NodeError(f"git -C {checkout} {' '.join(args)}: {result.stderr.strip()}")
+        msg = f"git -C {checkout} {' '.join(args)}: {result.stderr.strip()}"
+        raise NodeError(msg)
     return result.stdout

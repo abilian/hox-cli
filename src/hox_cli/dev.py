@@ -1,14 +1,19 @@
 """The dev loop: pushed? served by GitHub? rebuild in place, then check."""
 
+from __future__ import annotations
+
 import shlex
 import time
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
-import httpx2
 
-from .config import Check, Software
 from .node import Node, git
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .config import Check, Software
+    import httpx2
 
 GITHUB_POLL_SECONDS = 15
 GITHUB_TIMEOUT_SECONDS = (
@@ -26,9 +31,8 @@ def wait_for(what: str, find, sleep=time.sleep, poll: int = 5, timeout: int = 18
     waited = 0
     while not (rows := find()):
         if waited >= timeout:
-            raise DevError(
-                f"{what}: still not there after {waited // 60} min {waited % 60} s"
-            )
+            msg = f"{what}: still not there after {waited // 60} min {waited % 60} s"
+            raise DevError(msg)
         sleep(poll)
         waited += poll
     return rows[0]
@@ -40,9 +44,8 @@ def require_pushed(sw: Software) -> str:
     line = git(sw.checkout, "ls-remote", "origin", f"refs/heads/{sw.branch}").strip()
     remote = line.split()[0] if line else None
     if remote != head:
-        raise DevError(
-            f"{sw.branch} is at {head[:9]} locally and {remote[:9] if remote else 'absent'} on origin: push it first"
-        )
+        msg = f"{sw.branch} is at {head[:9]} locally and {remote[:9] if remote else 'absent'} on origin: push it first"
+        raise DevError(msg)
     return head
 
 
@@ -54,9 +57,8 @@ def pushed_commit(sw: Software, commit: str) -> str:
     """
     sha = git(sw.checkout, "rev-parse", "--verify", f"{commit}^{{commit}}").strip()
     if not git(sw.checkout, "branch", "-r", "--contains", sha).strip():
-        raise DevError(
-            f"{commit} is on no branch of origin (as last fetched): push it first"
-        )
+        msg = f"{commit} is on no branch of origin (as last fetched): push it first"
+        raise DevError(msg)
     return sha
 
 
@@ -83,9 +85,8 @@ def wait_for_github(
     waited = 0
     while stale := stale_files(sw, files, http):
         if waited >= GITHUB_TIMEOUT_SECONDS:
-            raise DevError(
-                f"raw.githubusercontent.com still serves old versions of: {', '.join(stale)}"
-            )
+            msg = f"raw.githubusercontent.com still serves old versions of: {', '.join(stale)}"
+            raise DevError(msg)
         out(
             f"raw.githubusercontent.com serves old {', '.join(stale)}, retrying in {GITHUB_POLL_SECONDS}s"
         )
@@ -106,7 +107,7 @@ def run_checks(
     checks: tuple[Check, ...], connection: dict[str, str], node: Node
 ) -> list[CheckResult]:
     """Run each check with curl on the node: backends are only reachable over re6st."""
-    published = {k: v for k, v in connection.items() if v not in (None, "None", "")}
+    published = {k: v for k, v in connection.items() if v not in {None, "None", ""}}
     results = []
     for check in checks:
         try:

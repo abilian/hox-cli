@@ -28,17 +28,13 @@ lint.extend-ignore = [
     "COM812", # ...
     "T201", # Print...
     "PERF401", # list comprehension - explicit append loop is clearer
-
-    # Fix later (or not)
     "E501", #    [ ] line-too-long
     "TRY003", #  [ ] raise-vanilla-args
-    "EM102", #   [ ] f-string-in-exception
-    "I002", #    [*] missing-required-import
-    "PLR6201", # [ ] literal-membership
+
+    # Fix later (or not)
     "S603", #    [ ] subprocess-without-shell-equals-true
     "PLR2004", # [ ] magic-value-comparison
     "S324", #    [ ] hashlib-insecure-hash-function
-    "EM101", #   [ ] raw-string-in-exception
     "PLW2901", # [ ] redefined-loop-name
     "S404", #    [ ] suspicious-subprocess-import
     "PLR0913", # [ ] too-many-arguments
@@ -65,7 +61,6 @@ lint.extend-ignore = [
     "ICN001", #  [ ] unconventional-import-alias
     "ARG001", #  [ ] unused-function-argument
     "ARG002", #  [ ] unused-method-argument
-      # 2             [ ] invalid-syntax
 ]
 
 [lint.extend-per-file-ignores]

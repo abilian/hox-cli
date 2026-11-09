@@ -5,12 +5,17 @@ is allocated): this only waits, says what it waits for, and forces one
 instance run once the build is there.
 """
 
+from __future__ import annotations
+
 import time
 
 from . import dev, status
-from .config import Software
-from .master import Api
 from .node import SLAPGRID_PROMISE_FAIL, Node
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .master import Api
+    from .config import Software
 
 ALLOCATION_POLL_SECONDS, ALLOCATION_TIMEOUT_SECONDS = 30, 30 * 60
 BUILD_POLL_SECONDS, BUILD_TIMEOUT_SECONDS = 60, 8 * 3600  # SBE without cache: hours

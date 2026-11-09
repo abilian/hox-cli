@@ -2,13 +2,18 @@
 time on a SlapOS node, pinned as uv resolved it, and what buildout can't install
 as is."""
 
+from __future__ import annotations
+
 import tomllib
 from dataclasses import dataclass
-from pathlib import Path
 
 from packaging import tags
 from packaging.markers import Marker
 from packaging.utils import canonicalize_name, parse_wheel_filename
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # buildout's own: their versions are SlapOS's (stack/slapos.cfg), whatever the app wants.
@@ -95,9 +100,8 @@ def runtime_pins(lock: dict, python: str) -> list[Pin]:
         packages.setdefault(p["name"], []).append(p)
     roots = [p for p in lock["package"] if {"editable", "virtual"} & p["source"].keys()]
     if len(roots) != 1:
-        raise LockError(
-            f"expected one editable or virtual root package, found {len(roots)}"
-        )
+        msg = f"expected one editable or virtual root package, found {len(roots)}"
+        raise LockError(msg)
     root = roots[0]
 
     def holds(dep: dict, extra: str = "") -> bool:
