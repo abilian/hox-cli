@@ -39,7 +39,7 @@ Every database runs inside the app's own partition. A name ending in `-source`, 
 - `-deny` adds the list of paths nginx must refuse, which the app's `.htaccess` files protect under Apache;
 - `-current` moves to a recent release of the app.
 
-[`notes/02-hop3-compat.md`](../notes/02-hop3-compat.md) explains how a recipe becomes a release, what each variant changes, and what we learned on the way.
+[`notes/02-hop3-compat.md`](../../notes/02-hop3-compat.md) explains how a recipe becomes a release, what each variant changes, and what we learned on the way.
 
 ## The node
 
@@ -52,7 +52,7 @@ The node we used for the tests is a VM with 4 vCPUs, 8 GB of memory, 100 GB of d
 ## Reusing it
 
 1. Set up a workspace: this file as `hox.toml` at the workspace root, and a clone of `abilian/slapos_abilian_edge` on branch `hop3-experiment` in `slapos/`.
-2. Replace our values with yours: `[project] reference`, `[node] title` and `ssh`, and each `instance` name, since names belong to a project. The `ssh` line expects an `ssh_config` next to the file, for the jump host to the node.
+2. Replace our values with yours: `[project] reference`, `[node] title` and `ssh`, and each `instance` name, since names belong to a project. The `ssh` line uses the `ssh_config` of [`../node/`](../node/), which also sets up the node itself.
 3. Delete the tables of the apps you don't want, then deploy one:
 
 ```
@@ -69,7 +69,7 @@ To deploy from your own fork, change `repo`: the node fetches each release from 
 hox port path/to/hop3-catalog/apps/golden/<app> ./slapos
 ```
 
-`hox port` writes `slapos/software/<app>/` and prints what it couldn't map. Commit and push the release, add a table like the ones here (pick a page for the checks that needs the app and the database, as the app's Hop3 healthcheck does), then `hox deploy <app>`. Before a deploy, `hox try-start <app>` on a test build finds in a minute what a failed deploy shows after 45. See [Porting Hop3 apps](../docs/src/guides/porting-hop3.md).
+`hox port` writes `slapos/software/<app>/` and prints what it couldn't map. Commit and push the release, add a table like the ones here (pick a page for the checks that needs the app and the database, as the app's Hop3 healthcheck does), then `hox deploy <app>`. Before a deploy, `hox try-start <app>` on a test build finds in a minute what a failed deploy shows after 45. See [Porting Hop3 apps](../../docs/src/guides/porting-hop3.md).
 
 ## Left out of this example
 

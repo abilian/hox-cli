@@ -1,0 +1,13 @@
+# How to reach the node as root: used by pyinfra, by the scripts here, and by
+# hox (`[node] ssh` in hox.toml). Host is node.env's NODE, HostName its IP.
+#
+# Here the node is a VM on a libvirt host's private network (create-vm.sh),
+# reached through that host. pyinfra (paramiko) drops ProxyJump, hence the
+# ProxyCommand. A node with a public address needs neither.
+Host my-node
+    HostName 192.168.122.10
+    User root
+    ProxyCommand ssh -W %h:%p root@kvm-host.example.org
+    # The VM's host key changes each time create-vm.sh recreates it.
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null

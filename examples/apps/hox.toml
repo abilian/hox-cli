@@ -25,9 +25,9 @@ reference = "PROJ-20261026.009-F09D5B"  # ours: yours is in the panel
 # Our node's title on the master. hox looks its reference up by title, so a
 # node registered again (a new reference) needs no change here.
 title = "hox-node"
-# Root on the node through a jump host, configured in an ssh_config next to
-# this file. hox appends the command to run.
-ssh = ["ssh", "-F", "node-deployer/ssh_config", "-o", "LogLevel=ERROR", "hox-node"]
+# Root on the node through a jump host, as configured in node/ssh_config
+# (examples/node/ copied next to this file). hox appends the command to run.
+ssh = ["ssh", "-F", "node/ssh_config", "-o", "LogLevel=ERROR", "hox-node"]
 # For `hox re6st-token` only: Rapid.Space's re6st registry.
 re6st_project = "PROJ-112"
 re6st_release = "https://lab.nexedi.com/nexedi/slapos/-/raw/1.0.404/software/re6stnet/software.cfg"

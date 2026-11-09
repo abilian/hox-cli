@@ -94,7 +94,7 @@ def test_example_config_is_valid():
 
 
 def test_deployment_example_is_valid():
-    example = Path(__file__).parents[2] / "example" / "hox.toml"
+    example = Path(__file__).parents[2] / "examples" / "apps" / "hox.toml"
     config = parse(tomllib.loads(example.read_text()), ROOT)
     assert len(config.software) == 21
     assert all(sw.checks for sw in config.software.values())

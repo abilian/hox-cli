@@ -1,6 +1,6 @@
 # Setting up a node
 
-`hox` doesn't install SlapOS on a machine. It gives a node's installation what it needs from the master, without the web panel: the node's certificate, and its token for re6st, the IPv6 network that connects SlapOS nodes. Your provisioning tool (Abilian uses a pyinfra deploy) does the rest, then runs `hox deploy` for each software.
+`hox` doesn't install SlapOS on a machine. It gives a node's installation what it needs from the master, without the web panel: the node's certificate, and its token for re6st, the IPv6 network that connects SlapOS nodes. Your provisioning tool does the rest, then runs `hox deploy` for each software. [`examples/node/`](https://github.com/abilian/hox-cli/tree/main/examples/node) is ours. Its pyinfra deploy uses these two commands to turn an empty Debian 12 machine into a node. Its runbook explains each step.
 
 ## The node's certificate
 
