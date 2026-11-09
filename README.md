@@ -1,6 +1,6 @@
 # hox-cli
 
-`hox` drives our SlapOS work on Rapid.Space (master, project, compute node) from the terminal, so that building, deploying and checking a software release never needs the web panel. Spec: `notes/01-spec.md`.
+`hox` drives our SlapOS work on Rapid.Space (master, project, compute node) from the terminal. Like the `slapos` client, it supplies software releases and requests instances. You stop, start or destroy an instance by its name alone, where the `slapos` client needs its release URL, type and node repeated exactly. It also does what the client can't: the setup you would otherwise do in the web panel, and the builds, logs and checks on your node. With it, building, deploying and checking a software release never needs the web panel. Spec: `notes/01-spec.md`; porting Hop3 apps: `notes/02-hop3-compat.md`.
 
 ## Install and run
 
@@ -13,7 +13,9 @@ Without installing: `uv run --project hox-cli hox status`.
 
 ## Configuration
 
-`hox` reads the first `hox.toml` in the current directory or its parents: the HOX workspace keeps its own at the root, next to the checkouts it names. `hox.example.toml` is a commented copy of it (a test parses it, so it stays valid); start from it to set up another workspace.
+`hox` reads the first `hox.toml` in the current directory or its parents: the HOX workspace keeps its own at the root, next to the checkouts it names. `hox.example.toml` is a commented copy of it (a test parses it, so it stays valid); start from it to set up another workspace. `--config PATH` names another file.
+
+Every command fails with a one-line message and exit 1 when the master, the node or git says no; `--debug` shows the traceback instead.
 
 ## Commands
 
@@ -24,7 +26,7 @@ Without installing: `uv run --project hox-cli hox status`.
 - `hox try-start SOFTWARE [--timeout 300]`: start a test build's real processes on the node (from `/srv/hox-dev/<software>`, as `run-build.sh` left it), in a temporary directory with their haproxy and a PostgreSQL of their own, and stop at the first failure with the logs. It finds in a minute what a deploy finds after its checks time out. No frontend or instance parameters, so it doesn't replace testing through the frontend.
 - `hox build-report [SOFTWARE]`: Markdown report of the software's builds on the node, from its software logs (14 days kept): each run of each release URL (start, end, duration, result), the longest parts, release and shared part sizes, disk used.
 - `hox versions [LOCK_FILE] [--python 3.12]`: a buildout `[versions]` section from a project's `uv.lock` (default `./uv.lock`): its run-time dependencies with their markers evaluated for Linux x86_64, as `:whl` when there is a wheel the node can install (pure, or manylinux x86_64 for that Python), and comments listing those from binary wheels (their C libraries bundled), those buildout must build from their sdist, and those it can't install at all. Leaves out buildout's own tools (pip, setuptools, wheel, zc.buildout). Needs no `hox.toml`.
-- `hox port RECIPE SLAPOS [--python 3.13]`: a SlapOS software release from a Hop3 recipe (a catalog app's directory, with its `hop3.toml`), on the hop3 stack of `slapos_abilian_edge` (branch `hop3-experiment`). Writes `SLAPOS/software/<app id>/`: a `software.cfg`, a `versions.cfg` from the recipe's `requirements.txt` (wheels looked up on PyPI), and the recipe's files in `hop3/`, leaving out the catalog's overlay (`catalog.toml`, readmes, icon, screenshots, `check.py`). Lists what it couldn't map; refuses what the stack can't do yet (other toolchains than Python, other builders than local, apps installed from their source). Needs no `hox.toml`.
+- `hox port RECIPE SLAPOS [--python 3.13] [--source DIR] [--venv]`: a SlapOS software release from a Hop3 recipe (a catalog app's directory, with its `hop3.toml`), on the hop3 stack of `slapos_abilian_edge` (branch `hop3-experiment`). Writes `SLAPOS/software/<app id>/`: a `software.cfg`, the recipe's files in `hop3/` (without the catalog's overlay: `catalog.toml`, readmes, icon, screenshots, `check.py`), and for a Python app a `versions.cfg` from its `requirements.txt` (wheels looked up on PyPI). Toolchains: python, go, node, php (php-fpm behind nginx, composer when the build runs it) and generic (a prebuilt binary, marked provisional); addons: postgres, and mysql as MariaDB. `--source`: an unpacked copy of the app, for one installed from its source (no `requirements.txt`; dependencies resolved with `uv`) or to recognise a Go app by its `go.mod`. `--venv`: a Python app installed by pip in a venv of its own, into `software/<app id>-venv/`. Lists what it couldn't map; refuses other builders than local, and overwrites only a release it wrote. Needs `uv`, no `hox.toml`. How a recipe maps to SlapOS: `notes/02-hop3-compat.md`.
 - `hox check [SOFTWARE]`: the checks of hox.toml, with curl on the node. Exit 1 if one fails.
 - `hox logs {software,instance,app} [--software NAME] [-f] [-n N]`: tail slapgrid's logs or the instance's service logs.
 - `hox supply [SOFTWARE] [--pinned COMMIT] [--remove]`: supply (or remove) the branch or a pinned URL on our node.
@@ -41,5 +43,11 @@ Without installing: `uv run --project hox-cli hox status`.
 ## Tests
 
 ```
-cd hox-cli && uv run pytest
+cd hox-cli
+uv run pytest                               # or: make test
+uv run pytest tests/a_unit                  # one tier: a_unit, b_integration, c_e2e
+uv run pytest tests/a_unit/test_port.py -k venv   # a subset
+make lint                                   # ruff, ty, pyrefly, mypy
 ```
+
+The tests need no network, master or node: API replies and node logs are recorded in `tests/fixtures/`.
