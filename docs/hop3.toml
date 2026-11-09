@@ -12,5 +12,5 @@ static-dir = "site"
 ignore = ["src"]
 
 # Set the public hostname before the first deploy.
-# [env]
-# HOST_NAME = "docs.example.org"
+[env]
+HOST_NAME = "hox-cli.lab.abilian.com"
