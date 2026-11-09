@@ -1,0 +1,16 @@
+# hox-cli documentation site, served as static files by Hop3.
+# Deploy with: make deploy (builds site/, then runs `hop3 deploy`)
+
+[metadata]
+id = "hox-docs"
+title = "hox-cli Documentation"
+description = "Documentation of hox, a CLI for SlapOS on Rapid.Space"
+
+[build]
+toolchain = "static"
+static-dir = "site"
+ignore = ["src"]
+
+# Set the public hostname before the first deploy.
+# [env]
+# HOST_NAME = "docs.example.org"
