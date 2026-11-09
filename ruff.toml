@@ -1,0 +1,96 @@
+target-version = "py312"
+preview = true
+
+lint.select = [
+    "ALL",
+]
+
+include = [
+    "pyproject.toml",
+    "src/**/*.py",
+    "tests/**/*.py",
+]
+
+lint.extend-ignore = [
+    # Later (or never)
+    "CPY", # Copyright
+    "A",
+    "ANN",
+    "ERA",
+    "FBT",
+    "D",
+    "DOC",
+
+    # False positive (or not)
+    "S101", # Use of `assert` detected
+    "D203", # one-blank-line-before-class
+    "D213", # multi-line-summary-second-line
+    "COM812", # ...
+    "T201", # Print...
+    "PERF401", # list comprehension - explicit append loop is clearer
+
+    # Fix later (or not)
+    "E501", #    [ ] line-too-long
+    "TRY003", #  [ ] raise-vanilla-args
+    "EM102", #   [ ] f-string-in-exception
+    "I002", #    [*] missing-required-import
+    "PLR6201", # [ ] literal-membership
+    "S603", #    [ ] subprocess-without-shell-equals-true
+    "PLR2004", # [ ] magic-value-comparison
+    "S324", #    [ ] hashlib-insecure-hash-function
+    "EM101", #   [ ] raw-string-in-exception
+    "PLW2901", # [ ] redefined-loop-name
+    "S404", #    [ ] suspicious-subprocess-import
+    "PLR0913", # [ ] too-many-arguments
+    "PLR0917", # [ ] too-many-positional-arguments
+    "I001", #    [*] unsorted-imports
+    "B905", #    [ ] zip-without-explicit-strict
+    "C901", #    [ ] complex-structure
+    "S607", #    [ ] start-process-with-partial-path
+    "S102", #    [ ] exec-builtin
+    "PLR6301", # [ ] no-self-use
+    "FURB113", # [ ] repeated-append
+    "PLW1514", # [ ] unspecified-encoding
+    "SIM102", #  [ ] collapsible-if
+    "RUF005", #  [ ] collection-literal-concatenation
+    "PLW0603", # [ ] global-statement
+    "PLC0415", # [ ] import-outside-top-level
+    "F402", #    [ ] import-shadowed-by-loop-var
+    "FURB118", # [ ] reimplemented-operator
+    "PLW1510", # [ ] subprocess-run-without-check
+    "S314", #    [ ] suspicious-xml-element-tree-usage
+    "S405", #    [ ] suspicious-xml-etree-import
+    "PLR0912", # [ ] too-many-branches
+    "PERF203", # [ ] try-except-in-loop
+    "ICN001", #  [ ] unconventional-import-alias
+    "ARG001", #  [ ] unused-function-argument
+    "ARG002", #  [ ] unused-method-argument
+      # 2             [ ] invalid-syntax
+]
+
+[lint.extend-per-file-ignores]
+"tests/**/*.py" = [
+    "BLE001", #  blind-except
+    "D",
+    "DOC",
+    "ANN",
+    "PLR2004",
+    "INP001",
+    "PLC0415", # runtime imports for optional dependencies
+    "E501", # line too long in test assertions
+    "N802", # naming
+    #
+    "ARG005", #  unused-lambda-argument
+    "PT006", #   pytest-parametrize-names-wrong-type
+    "RUF043", #  pytest-raises-ambiguous-pattern
+    "ISC004", #  implicit-string-concatenation-in-collection-literal
+    "SLF001", #  private-member-access
+    "RUF059", #  unused-unpacked-variable
+    "PLC1901", # compare-to-empty-string
+    "TC003", #   typing-only-standard-library-import
+]
+
+[lint.isort]
+combine-as-imports = true
+required-imports = ["from __future__ import annotations"]
+known-first-party = ["hox-cli"]
