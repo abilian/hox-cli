@@ -413,9 +413,7 @@ class Nodes:
 
 def test_find_node():
     assert find_node(
-        Nodes([
-            {"reference": "COMP-9", "relative_url": "compute_node_module/9"}
-        ]),  # pyrefly: ignore[bad-argument-type]
+        Nodes([{"reference": "COMP-9", "relative_url": "compute_node_module/9"}]),  # pyrefly: ignore[bad-argument-type]
         "P",
         "hox-node",
     ) == (ComputeNode("COMP-9", "compute_node_module/9"))
