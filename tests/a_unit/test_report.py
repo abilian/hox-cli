@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime
 
 from conftest import BRANCH_URL
@@ -31,20 +33,32 @@ NOW = datetime(2026, 10, 30, 23, 31, tzinfo=UTC)
 
 def test_parse_runs():
     done, failed, killed, running = report.parse_runs(LOG)
-    assert (done.url, done.result, done.end) == (BRANCH_URL, "completed", datetime(2026, 10, 30, 20, 55, 45, tzinfo=UTC))
+    assert (done.url, done.result, done.end) == (
+        BRANCH_URL,
+        "completed",
+        datetime(2026, 10, 30, 20, 55, 45, tzinfo=UTC),
+    )
     assert done.part_times(NOW) == [("ncurses", 75.0), ("zlib", 2973.0)]
     assert failed.result == "failed"
     # Killed (no end in the log): it ends at its last line, before the next slapgrid run.
-    assert (killed.result, killed.end) == ("stopped", datetime(2026, 10, 30, 22, 1, tzinfo=UTC))
+    assert (killed.result, killed.end) == (
+        "stopped",
+        datetime(2026, 10, 30, 22, 1, tzinfo=UTC),
+    )
     assert (running.result, running.end) == ("building", None)
     assert running.part_times(NOW) == [("llvm", 3600.0)]
 
 
 def test_markdown(config_data, tmp_path):
     config = parse(config_data, tmp_path)
-    sizes = {software_dir(BRANCH_URL): 138 * 1024, f"{report.SHARED}/gcc-14.3": 1800 * 1024}
+    sizes = {
+        software_dir(BRANCH_URL): 138 * 1024,
+        f"{report.SHARED}/gcc-14.3": 1800 * 1024,
+    }
     usage = report.NodeUsage(NOW, 4, 8000, "-j4", (9 * 1024**2, 99 * 1024**2), sizes)
-    text = report.markdown(config, config.software_named(None), report.parse_runs(LOG), usage)
+    text = report.markdown(
+        config, config.software_named(None), report.parse_runs(LOG), usage
+    )
     assert "## mynij-proxy branch" in text
     assert "| 1 | 2026-10-30 20:04 | 2026-10-30 20:55 | 51 min | completed |" in text
     assert "example.org" not in text  # another software's runs

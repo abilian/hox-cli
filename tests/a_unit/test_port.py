@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 
 import pytest
@@ -60,14 +62,21 @@ path = "/health"
 mode = "block"
 """
 
+
 def pypi(name, version):
     return {
         "cal": ["cal-1.0-py3-none-any.whl"],
-        "bcrypt": ["bcrypt-5.0.0.tar.gz", "bcrypt-5.0.0-cp39-abi3-manylinux_2_34_x86_64.whl"],
+        "bcrypt": [
+            "bcrypt-5.0.0.tar.gz",
+            "bcrypt-5.0.0-cp39-abi3-manylinux_2_34_x86_64.whl",
+        ],
         "oldlib": ["oldlib-0.1.tar.gz"],
         "misaka": ["misaka-2.1.1.tar.gz"],
         "setuptools": ["setuptools-84.0.tar.gz", "setuptools-84.0-py3-none-any.whl"],
-        "cffi": ["cffi-2.1.1.tar.gz", "cffi-2.1.1-cp313-cp313-manylinux_2_28_x86_64.whl"],
+        "cffi": [
+            "cffi-2.1.1.tar.gz",
+            "cffi-2.1.1-cp313-cp313-manylinux_2_28_x86_64.whl",
+        ],
     }[name]
 
 
@@ -78,9 +87,17 @@ def recipe(tmp_path):
     (d / "screenshots").mkdir()
     (d / "hop3.toml").write_text(HOP3_TOML)
     (d / "requirements.txt").write_text(
-        "# pinned\ncal==1.0\nbcrypt==5.0.0  # via cal\noldlib==0.1\nwinlib==1 ; sys_platform == 'win32'\n")
+        "# pinned\ncal==1.0\nbcrypt==5.0.0  # via cal\noldlib==0.1\nwinlib==1 ; sys_platform == 'win32'\n"
+    )
     (d / "scripts" / "download.sh").write_text("mkdir -p var/data\n")
-    for overlay in ("catalog.toml", "readme.md", "readme-fr.md", "icon.webp", "check.py", "screenshots/a.png"):
+    for overlay in (
+        "catalog.toml",
+        "readme.md",
+        "readme-fr.md",
+        "icon.webp",
+        "check.py",
+        "screenshots/a.png",
+    ):
         (d / overlay).write_text("")
     return d
 
@@ -88,12 +105,23 @@ def recipe(tmp_path):
 def test_port(recipe):
     release = port(recipe, "3.13", pypi)
     assert release.name == "cal"
-    assert list(release.files) == ["hop3.toml", "requirements.txt", "scripts/download.sh"]
-    assert release.processes == {"release": ["bash scripts/setup.sh", "echo ready"],
-                                 "web": ["python -m cal --port $PORT"], "mailer": ["cal-mailer"]}
-    assert release.volumes == ["data var/data"] and release.database
+    assert list(release.files) == [
+        "hop3.toml",
+        "requirements.txt",
+        "scripts/download.sh",
+    ]
+    assert release.processes == {
+        "release": ["bash scripts/setup.sh", "echo ready"],
+        "web": ["python -m cal --port $PORT"],
+        "mailer": ["cal-mailer"],
+    }
+    assert release.volumes == ["data var/data"]
+    assert release.database
     cfg = software_cfg(release)
-    assert "  ../../component/postgresql/buildout.cfg\n  ../../stack/hop3/buildout.cfg\n" in cfg
+    assert (
+        "  ../../component/postgresql/buildout.cfg\n  ../../stack/hop3/buildout.cfg\n"
+        in cfg
+    )
     assert "<= python3.13" in cfg
     assert "  scripts/download.sh " in cfg
     assert "commands =\n  bash scripts/download.sh\n" in cfg
@@ -110,8 +138,11 @@ def test_port(recipe):
     assert "mailer = cal-mailer\n" in cfg
     assert "  HOP3_BACKEND_URL=$${app-parameters:url}\n" in cfg
     instance_reference = "$${app-parameters:url}"
-    assert "${" not in cfg.replace("${:_profile_base_location_}", "").replace("${postgresql:location}", "").replace(instance_reference, "")
-    assert "nodejs" not in cfg and "egg =" not in cfg
+    assert "${" not in cfg.replace("${:_profile_base_location_}", "").replace(
+        "${postgresql:location}", ""
+    ).replace(instance_reference, "")
+    assert "nodejs" not in cfg
+    assert "egg =" not in cfg
     assert release.notes == [
         "[admin] email: admin@cal.invalid, unless HOP3_ADMIN_EMAIL is an instance parameter",
         "[probe]: not created, nothing on SlapOS signs in with it",
@@ -119,8 +150,10 @@ def test_port(recipe):
         "[waf]: not mapped",
     ]
     versions = versions_cfg(release)
-    assert "bcrypt = 5.0.0:whl" in versions and "cal    = 1.0:whl" in versions
-    assert "oldlib = 0.1\n" in versions and "winlib" not in versions
+    assert "bcrypt = 5.0.0:whl" in versions
+    assert "cal    = 1.0:whl" in versions
+    assert "oldlib = 0.1\n" in versions
+    assert "winlib" not in versions
 
 
 def test_write_leaves_a_release_it_did_not_write(recipe, tmp_path):
@@ -138,15 +171,35 @@ def test_write(recipe, tmp_path):
     (out / "hop3" / "stale").mkdir(parents=True)
     write(port(recipe, "3.13", pypi), out)
     assert sorted(str(p.relative_to(out)) for p in out.rglob("*") if p.is_file()) == [
-        "hop3/hop3.toml", "hop3/requirements.txt", "hop3/scripts/download.sh", "software.cfg", "versions.cfg"]
+        "hop3/hop3.toml",
+        "hop3/requirements.txt",
+        "hop3/scripts/download.sh",
+        "software.cfg",
+        "versions.cfg",
+    ]
 
 
-@pytest.mark.parametrize("old, new, error", [
-    ('toolchain = "python"', 'toolchain = "ruby"', "toolchain 'ruby'"),
-    ('build = "pip install', 'build = "make" #', "only 'pip install -r requirements.txt'"),
-    ('start = "python -m cal --port $PORT"', 'start = "cal --port ${PORT}x"', "commands must be one line"),
-    ('before-build = "bash', 'before-build = "X=${HOME} bash', "commands must be one line"),
-])
+@pytest.mark.parametrize(
+    "old, new, error",
+    [
+        ('toolchain = "python"', 'toolchain = "ruby"', "toolchain 'ruby'"),
+        (
+            'build = "pip install',
+            'build = "make" #',
+            "only 'pip install -r requirements.txt'",
+        ),
+        (
+            'start = "python -m cal --port $PORT"',
+            'start = "cal --port ${PORT}x"',
+            "commands must be one line",
+        ),
+        (
+            'before-build = "bash',
+            'before-build = "X=${HOME} bash',
+            "commands must be one line",
+        ),
+    ],
+)
 def test_port_refuses(recipe, old, new, error):
     toml = recipe / "hop3.toml"
     toml.write_text(toml.read_text().replace(old, new))
@@ -169,8 +222,12 @@ def test_port_needs_requirements_or_source(recipe):
 def test_port_from_source(recipe, tmp_path):
     (recipe / "requirements.txt").unlink()
     toml = recipe / "hop3.toml"
-    toml.write_text(toml.read_text().replace('before-build = "bash scripts/download.sh"',
-                                             'before-build = ["bash scripts/download.sh", "npm ci"]'))
+    toml.write_text(
+        toml.read_text().replace(
+            'before-build = "bash scripts/download.sh"',
+            'before-build = ["bash scripts/download.sh", "npm ci"]',
+        )
+    )
     source = tmp_path / "src"
     source.mkdir()
     (source / "pyproject.toml").write_text('[project]\nname = "cal-app"\n')
@@ -182,7 +239,8 @@ def test_port_from_source(recipe, tmp_path):
 
     release = port(recipe, "3.13", pypi, source=source, resolve=resolve)
     assert resolved == [(source / "pyproject.toml", "3.13")]
-    assert release.egg == "cal-app" and release.node
+    assert release.egg == "cal-app"
+    assert release.node
     assert release.eggs == ["bcrypt", "oldlib"]  # setuptools is SlapOS's
     cfg = software_cfg(release)
     assert "egg = cal-app\neggs =\n  ${python-app-develop:egg}\n  bcrypt\n" in cfg
@@ -212,12 +270,19 @@ def test_port_venv_builds_compiled_packages_from_source(recipe, tmp_path):
     release = port(recipe, "3.13", pypi, venv=True, hashes=hashes)
     assert hashed == [(["bcrypt", "cal", "oldlib"], "3.13")]
     cfg = software_cfg(release)
-    assert "  ../../stack/hop3/buildout.cfg\n  ../../stack/python-app/venv.cfg\n  ../../stack/hop3/venv.cfg\n" in cfg
+    assert (
+        "  ../../stack/hop3/buildout.cfg\n  ../../stack/python-app/venv.cfg\n  ../../stack/hop3/venv.cfg\n"
+        in cfg
+    )
     assert "no-binary = bcrypt\n" in cfg  # oldlib has only an sdist, cal a pure wheel
     assert "uploaded-prior-to = 20" in cfg
-    assert "versions.cfg" not in cfg and "eggs =" not in cfg
+    assert "versions.cfg" not in cfg
+    assert "eggs =" not in cfg
     md5 = hashlib.md5(release.requirements.encode()).hexdigest()
-    assert f"[python-app-requirements]\nurl = ${{:_profile_base_location_}}/requirements.txt\nmd5sum = {md5}\n" in cfg
+    assert (
+        f"[python-app-requirements]\nurl = ${{:_profile_base_location_}}/requirements.txt\nmd5sum = {md5}\n"
+        in cfg
+    )
     write(release, tmp_path)
     assert (tmp_path / "requirements.txt").read_text() == release.requirements
     assert not (tmp_path / "versions.cfg").exists()
@@ -233,7 +298,9 @@ def test_port_venv_keeps_what_buildout_would_provide(recipe):
 def test_port_venv_uses_the_library_a_package_needs(recipe):
     requirements = recipe / "requirements.txt"
     requirements.write_text(requirements.read_text() + "cffi==2.1.1\n")
-    cfg = software_cfg(port(recipe, "3.13", pypi, venv=True, hashes=lambda pins, python: ""))
+    cfg = software_cfg(
+        port(recipe, "3.13", pypi, venv=True, hashes=lambda pins, python: "")
+    )
     assert "  ../../component/libffi/buildout.cfg\n" in cfg
     assert "build-libraries = ${libffi:location}\n" in cfg
     assert "no-binary = bcrypt cffi\n" in cfg
@@ -287,7 +354,9 @@ def go_app(tmp_path):
     recipe = tmp_path / "forge"
     (recipe / "scripts").mkdir(parents=True)
     (recipe / "hop3.toml").write_text(GO_APP)
-    (recipe / "scripts/download.sh").write_text("hop3-fetch https://example.org/forge.tar.gz | tar xz\n")
+    (recipe / "scripts/download.sh").write_text(
+        "hop3-fetch https://example.org/forge.tar.gz | tar xz\n"
+    )
     return recipe
 
 
@@ -303,24 +372,37 @@ def _no_pypi(name, version):
     raise AssertionError(f"{name} {version}: a Go app has no eggs")
 
 
-@pytest.mark.parametrize("go_mod, component", [
-    ("module x\n", "1.23"),  # says nothing
-    ("module x\n\ngo 1.9\n", "1.23"),  # as a number, 9 is below 23
-    ("module x\n\ngo 1.23.4\n", "1.23"),
-    ("module x\n\ngo 1.24.0\n", "1.24"),
-    ("module x\n\ngo 1.25.0\ntoolchain go1.25.8\n", "1.26"),  # SlapOS has no 1.25
-])
+@pytest.mark.parametrize(
+    "go_mod, component",
+    [
+        ("module x\n", "1.23"),  # says nothing
+        ("module x\n\ngo 1.9\n", "1.23"),  # as a number, 9 is below 23
+        ("module x\n\ngo 1.23.4\n", "1.23"),
+        ("module x\n\ngo 1.24.0\n", "1.24"),
+        ("module x\n\ngo 1.25.0\ntoolchain go1.25.8\n", "1.26"),  # SlapOS has no 1.25
+    ],
+)
 def test_port_go_component_from_go_mod(go_app, go_source, go_mod, component):
     (go_source / "go.mod").write_text(go_mod)
-    assert f"tools = ${{golang{component}:location}}/bin:" in software_cfg(port(go_app, "3.13", _no_pypi, source=go_source))
+    assert f"tools = ${{golang{component}:location}}/bin:" in software_cfg(
+        port(go_app, "3.13", _no_pypi, source=go_source)
+    )
 
 
 def test_port_go_app_with_a_node_frontend_has_both_on_its_path(go_app, go_source):
     toml = go_app / "hop3.toml"
-    toml.write_text(toml.read_text().replace('build = "make forge"', 'build = ["NODE_OPTIONS=--max-old-space-size=3072 npx pnpm --dir web build", "make forge"]'))
+    toml.write_text(
+        toml.read_text().replace(
+            'build = "make forge"',
+            'build = ["NODE_OPTIONS=--max-old-space-size=3072 npx pnpm --dir web build", "make forge"]',
+        )
+    )
     cfg = software_cfg(port(go_app, "3.13", _no_pypi, source=go_source))
     assert cfg.count("tools = ") == 1
-    assert "tools = ${golang1.23:location}/bin:${nodejs:location}/bin:${:base-tools}\n" in cfg
+    assert (
+        "tools = ${golang1.23:location}/bin:${nodejs:location}/bin:${:base-tools}\n"
+        in cfg
+    )
     assert "<= nodejs-" in cfg
 
 
@@ -332,14 +414,18 @@ def test_port_refuses_a_go_mod_newer_than_the_components(go_app, go_source):
 
 def test_port_marks_a_prebuilt_binary_as_provisional(go_app):
     toml = go_app / "hop3.toml"
-    toml.write_text(toml.read_text().replace('build = "make forge"', 'toolchain = "generic"'))
+    toml.write_text(
+        toml.read_text().replace('build = "make forge"', 'toolchain = "generic"')
+    )
     release = port(go_app, "3.13", _no_pypi)
-    assert release.prebuilt and release.eggs == []
+    assert release.prebuilt
+    assert release.eggs == []
     assert release.commands == ["bash scripts/download.sh"]
     assert any("provisional" in n for n in release.notes)
     cfg = software_cfg(release)
     assert "# Provisional: runs the binary" in cfg
-    assert "golang" not in cfg and "./versions.cfg" not in cfg
+    assert "golang" not in cfg
+    assert "./versions.cfg" not in cfg
 
 
 def test_port_go_app_needs_its_source_to_be_told_apart(go_app):
@@ -349,7 +435,9 @@ def test_port_go_app_needs_its_source_to_be_told_apart(go_app):
 
 def test_port_go_builds_with_slapos_go(go_app, go_source, tmp_path):
     release = port(go_app, "3.13", _no_pypi, source=go_source)
-    assert release.go and release.eggs == [] and release.pins == []
+    assert release.go
+    assert release.eggs == []
+    assert release.pins == []
     assert release.commands == ["bash scripts/download.sh", "make forge"]
     cfg = software_cfg(release)
     assert "  ../../component/golang/buildout.cfg\n" in cfg
@@ -372,13 +460,19 @@ def test_port_multi_line_admin_create_becomes_a_script(go_app, go_source, tmp_pa
     out.mkdir()
     write(release, out)
     script = (out / "hop3" / "hop3-admin-create.sh").read_text()
-    assert 'USER_NAME="${HOP3_ADMIN_USER:?not injected}"' in script  # as the recipe has it
+    assert (
+        'USER_NAME="${HOP3_ADMIN_USER:?not injected}"' in script
+    )  # as the recipe has it
 
 
 def test_port_generated_secrets_keep_their_kind(go_app, go_source):
     release = port(go_app, "3.13", _no_pypi, source=go_source)
-    assert {"TOKEN:hex", "JWT:urlsafe", "KEY:base64", "PLAIN", "SHORT:hex"} <= set(release.secrets)
-    assert any(n.startswith("[env] ID:") for n in release.notes)  # uuid: not a kind we make
+    assert {"TOKEN:hex", "JWT:urlsafe", "KEY:base64", "PLAIN", "SHORT:hex"} <= set(
+        release.secrets
+    )
+    assert any(
+        n.startswith("[env] ID:") for n in release.notes
+    )  # uuid: not a kind we make
     assert any(n.startswith("[env] SHORT:") for n in release.notes)  # 32 bytes, not 8
 
 
@@ -390,9 +484,13 @@ def test_port_operator_email_has_a_default(go_app, go_source):
 
 def test_port_computed_env_reads_the_admin(go_app, go_source):
     toml = go_app / "hop3.toml"
-    toml.write_text(toml.read_text() + '\n[env.computed]\nADMIN_USERNAME = "${HOP3_ADMIN_USER}"\n')
+    toml.write_text(
+        toml.read_text() + '\n[env.computed]\nADMIN_USERNAME = "${HOP3_ADMIN_USER}"\n'
+    )
     env = port(go_app, "3.13", _no_pypi, source=go_source).environment
-    assert env.index("HOP3_ADMIN_USER=root") < env.index('ADMIN_USERNAME="$HOP3_ADMIN_USER"')
+    assert env.index("HOP3_ADMIN_USER=root") < env.index(
+        'ADMIN_USERNAME="$HOP3_ADMIN_USER"'
+    )
 
 
 NODE_APP = """
@@ -413,19 +511,27 @@ start = "node server.js"
 def test_port_node_app_compiles_its_native_modules(go_app):
     (go_app / "hop3.toml").write_text(NODE_APP)
     release = port(go_app, "3.13", _no_pypi)
-    assert release.node and release.eggs == []
+    assert release.node
+    assert release.eggs == []
     assert release.commands == ["bash scripts/download.sh", "npm ci", "npm run build"]
     cfg = software_cfg(release)
     assert "[nodejs-headers]\n<= nodejs-headers-24.11.0\n" in cfg
     assert "  npm_config_build_from_source=true\n" in cfg
     assert "  npm_config_tarball=${nodejs-headers:target}\n" in cfg
-    assert "${gcc:prefix}/bin" in cfg and "./versions.cfg" not in cfg
+    assert "${gcc:prefix}/bin" in cfg
+    assert "./versions.cfg" not in cfg
 
 
 def test_port_node_app_in_a_go_build_keeps_its_prebuilt_tools(go_app, go_source):
     toml = go_app / "hop3.toml"
-    toml.write_text(toml.read_text().replace('build = "make forge"', 'build = ["npm ci", "go build ."]'))
-    assert "npm_config_build_from_source" not in software_cfg(port(go_app, "3.13", _no_pypi, source=go_source))
+    toml.write_text(
+        toml.read_text().replace(
+            'build = "make forge"', 'build = ["npm ci", "go build ."]'
+        )
+    )
+    assert "npm_config_build_from_source" not in software_cfg(
+        port(go_app, "3.13", _no_pypi, source=go_source)
+    )
 
 
 PHP_APP = """
@@ -452,13 +558,19 @@ type = "postgres"
 def test_port_php_app_runs_php_fpm_behind_nginx(go_app):
     (go_app / "hop3.toml").write_text(PHP_APP)
     release = port(go_app, "3.13", _no_pypi)
-    assert release.processes == {"release": ["bash scripts/setup.sh"], "fpm": ["hop3-php-fpm"], "web": ["hop3-php-web"]}
+    assert release.processes == {
+        "release": ["bash scripts/setup.sh"],
+        "fpm": ["hop3-php-fpm"],
+        "web": ["hop3-php-web"],
+    }
     assert "HOP3_PROXY_DENY='/config /data'" in release.environment
     assert not release.notes
     cfg = software_cfg(release)
-    assert ("  ../../component/apache-php/buildout.cfg\n  ../../component/nginx/buildout.cfg\n"
-            "  ../../component/postgresql/buildout.cfg\n"
-            "  ../../stack/hop3/buildout.cfg\n  ../../stack/hop3/php.cfg\n") in cfg
+    assert (
+        "  ../../component/apache-php/buildout.cfg\n  ../../component/nginx/buildout.cfg\n"
+        "  ../../component/postgresql/buildout.cfg\n"
+        "  ../../stack/hop3/buildout.cfg\n  ../../stack/hop3/php.cfg\n"
+    ) in cfg
     assert "tools = ${hop3-php:tools}:${:base-tools}\n" in cfg
     assert "  PHPRC=${hop3-php-ini:output}\n" in cfg
     assert "postgresql-bin = ${postgresql:location}/bin\n" in cfg
@@ -466,7 +578,9 @@ def test_port_php_app_runs_php_fpm_behind_nginx(go_app):
 
 
 def test_port_php_app_built_with_composer_gets_composer(go_app):
-    (go_app / "hop3.toml").write_text(PHP_APP.replace('build = "true"', 'build = "composer install --no-dev"'))
+    (go_app / "hop3.toml").write_text(
+        PHP_APP.replace('build = "true"', 'build = "composer install --no-dev"')
+    )
     cfg = software_cfg(port(go_app, "3.13", _no_pypi))
     assert "  ../../stack/hop3/php.cfg\n  ../../stack/hop3/composer.cfg\n" in cfg
     assert "  composer install --no-dev\n" in cfg
@@ -475,7 +589,9 @@ def test_port_php_app_built_with_composer_gets_composer(go_app):
 
 def test_port_secret_prefix_is_added_in_the_environment(go_app):
     (go_app / "hop3.toml").write_text(
-        PHP_APP + '\n[env]\nAPP_KEY = { generate = "base64", length = 32, prefix = "base64:" }\n')
+        PHP_APP
+        + '\n[env]\nAPP_KEY = { generate = "base64", length = 32, prefix = "base64:" }\n'
+    )
     release = port(go_app, "3.13", _no_pypi)
     assert "HOP3_SECRET_APP_KEY:base64" in release.secrets
     assert 'APP_KEY="base64:$HOP3_SECRET_APP_KEY"' in release.environment
@@ -483,9 +599,13 @@ def test_port_secret_prefix_is_added_in_the_environment(go_app):
 
 
 def test_port_mysql_addon_is_mariadb_in_the_partition(go_app):
-    (go_app / "hop3.toml").write_text(PHP_APP.replace('type = "postgres"', 'type = "mysql"'))
+    (go_app / "hop3.toml").write_text(
+        PHP_APP.replace('type = "postgres"', 'type = "mysql"')
+    )
     release = port(go_app, "3.13", _no_pypi)
-    assert release.mariadb and not release.database and not release.notes
+    assert release.mariadb
+    assert not release.database
+    assert not release.notes
     cfg = software_cfg(release)
     assert "  ../../component/mariadb/buildout.cfg\n" in cfg
     assert "mariadb-bin = ${mariadb:location}/bin\n" in cfg
@@ -495,7 +615,10 @@ def test_port_mysql_addon_is_mariadb_in_the_partition(go_app):
 def test_port_proxy_section_is_a_note_for_other_apps(go_app, go_source):
     toml = go_app / "hop3.toml"
     toml.write_text(toml.read_text() + '\n[proxy]\ndeny = ["/config"]\n')
-    assert any(n.startswith("[proxy]") for n in port(go_app, "3.13", _no_pypi, source=go_source).notes)
+    assert any(
+        n.startswith("[proxy]")
+        for n in port(go_app, "3.13", _no_pypi, source=go_source).notes
+    )
 
 
 def test_port_venv_refuses_a_php_app(go_app):

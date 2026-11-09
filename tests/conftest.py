@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from pathlib import Path
 
@@ -7,7 +9,9 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 BRANCH_URL = "https://raw.githubusercontent.com/abilian/slapos_abilian_edge/mynij-proxy/software/mynij-proxy/software.cfg"
 
-RE6ST_RELEASE = "https://lab.nexedi.com/nexedi/slapos/-/raw/1.0.404/software/re6stnet/software.cfg"
+RE6ST_RELEASE = (
+    "https://lab.nexedi.com/nexedi/slapos/-/raw/1.0.404/software/re6stnet/software.cfg"
+)
 
 CONFIG = {
     "master": {
@@ -32,7 +36,13 @@ CONFIG = {
             "software_type": "default",
             "product": "mynij-proxy",
             "instance": "mynij-proxy-3",
-            "checks": [{"name": "backend ping", "url": "{backend-url}/ping", "expect_status": 200}],
+            "checks": [
+                {
+                    "name": "backend ping",
+                    "url": "{backend-url}/ping",
+                    "expect_status": 200,
+                }
+            ],
         }
     },
 }

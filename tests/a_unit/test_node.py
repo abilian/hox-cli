@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import subprocess
 
 import pytest
-
 from conftest import fixture_text
+
 from hox_cli.node import (
     SEPARATOR,
     Node,
@@ -44,7 +46,9 @@ def test_last_buildout_errors():
         "Error: Error downloading https://raw.githubusercontent.com/"
     )
     # The poetry failure was an internal error: no "Error:" line.
-    assert "no 'Error:' line" in errors["/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f"]
+    assert (
+        "no 'Error:' line" in errors["/opt/slapgrid/4c5a1594b4b6fc0f59117f5c10cd841f"]
+    )
 
 
 def test_parse_facts():
@@ -94,10 +98,18 @@ def test_parse_system():
     ]
     system = parse_system(f"{SEPARATOR}\n".join(parts))
     assert system.uptime_seconds == 392400
-    assert [p.name for p in system.partitions] == ["slappart0", "slappart2", "slappart10"]
+    assert [p.name for p in system.partitions] == [
+        "slappart0",
+        "slappart2",
+        "slappart10",
+    ]
     web, broken, empty = system.partitions
     assert (web.memory_mb, web.running, web.down) == (101, 1, [])
-    assert (broken.memory_mb, broken.running, broken.down) == (2, 1, ["web", "bootstrap-monitor", "crond", "redis"])
+    assert (broken.memory_mb, broken.running, broken.down) == (
+        2,
+        1,
+        ["web", "bootstrap-monitor", "crond", "redis"],
+    )
     assert (empty.memory_mb, empty.running, empty.down) == (0, 0, [])
     assert (system.memory_available_mb, system.memory_total_mb) == (3700, 7900)
     assert (system.disk_free_mb, system.disk_total_mb) == (44000, 120000)
@@ -108,7 +120,9 @@ def test_facts_sends_one_command():
 
     def fake_run(args, **kwargs):
         calls.append(args)
-        return subprocess.CompletedProcess(args, 0, f"{software_dir(PINNED)} completed\n{SEPARATOR}\n{SEPARATOR}\n", "")
+        return subprocess.CompletedProcess(
+            args, 0, f"{software_dir(PINNED)} completed\n{SEPARATOR}\n{SEPARATOR}\n", ""
+        )
 
     facts = Node(("ssh", "h"), run=fake_run).facts([PINNED])
     assert len(calls) == 1
@@ -149,17 +163,30 @@ SLAPGRID_LINES = [
 def test_slapgrid_shows_changes_not_unchanged_parts():
     popen, commands = popen_returning((SLAPGRID_LINES, 0))
     out = []
-    assert Node(("ssh", "h"), popen=popen).slapgrid("software --force", out=out.append) == 0
+    assert (
+        Node(("ssh", "h"), popen=popen).slapgrid("software --force", out=out.append)
+        == 0
+    )
     assert commands == ["slapos node software --force"]
-    assert out == ["INFO Installing mynij-proxy-eggs.", "INFO Finished software releases."]
+    assert out == [
+        "INFO Installing mynij-proxy-eggs.",
+        "INFO Finished software releases.",
+    ]
 
 
 def test_slapgrid_waits_while_busy():
-    busy = (["INFO New slapos process started, but another slapos process is aleady running with pid 1, exiting."], 10)
+    busy = (
+        [
+            "INFO New slapos process started, but another slapos process is aleady running with pid 1, exiting."
+        ],
+        10,
+    )
     popen, commands = popen_returning(busy, busy, (SLAPGRID_LINES, 2))
     sleeps, out = [], []
     node = Node(("ssh", "h"), popen=popen, sleep=sleeps.append)
-    assert node.slapgrid("instance --force", out=out.append) == 2  # promise failures are not an error
+    assert (
+        node.slapgrid("instance --force", out=out.append) == 2
+    )  # promise failures are not an error
     assert len(commands) == 3
     assert sleeps == [15, 15]
 
@@ -168,7 +195,9 @@ def test_slapgrid_gives_up_when_busy_too_long(monkeypatch):
     monkeypatch.setattr("hox_cli.node.BUSY_TIMEOUT_SECONDS", 15)
     popen, _ = popen_returning(([], 10), ([], 10))
     with pytest.raises(NodeError, match="kept the lock"):
-        Node(("ssh", "h"), popen=popen, sleep=lambda _: None).slapgrid("software", out=lambda _: None)
+        Node(("ssh", "h"), popen=popen, sleep=lambda _: None).slapgrid(
+            "software", out=lambda _: None
+        )
 
 
 def test_slapgrid_failure():
@@ -178,6 +207,12 @@ def test_slapgrid_failure():
 
 
 def test_ssh_failure_shows_what_ssh_said():
-    popen, _ = popen_returning((["INFO Updating ncurses.", "Connection to 10.73.0.3 closed by remote host."], 255))
-    with pytest.raises(NodeError, match="ssh failed; its last lines:\nINFO Updating ncurses.\nConnection to 10.73.0.3 closed"):
+    popen, _ = popen_returning((
+        ["INFO Updating ncurses.", "Connection to 10.73.0.3 closed by remote host."],
+        255,
+    ))
+    with pytest.raises(
+        NodeError,
+        match="ssh failed; its last lines:\nINFO Updating ncurses.\nConnection to 10.73.0.3 closed",
+    ):
         Node(("ssh", "h"), popen=popen).slapgrid("software", out=lambda _: None)

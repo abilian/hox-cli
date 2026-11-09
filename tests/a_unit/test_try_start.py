@@ -1,5 +1,7 @@
 """The profile reading of `hox try-start`; the rest runs on a node."""
 
+from __future__ import annotations
+
 import pytest
 
 from hox_cli.try_start import Profile, parse
@@ -52,8 +54,13 @@ inline =
 
 @pytest.fixture
 def profile(tmp_path):
-    return Profile(PROFILE, {("buildout", "directory"): str(tmp_path),
-                             ("slap-configuration", "ipv4-random"): "127.0.0.1"})
+    return Profile(
+        PROFILE,
+        {
+            ("buildout", "directory"): str(tmp_path),
+            ("slap-configuration", "ipv4-random"): "127.0.0.1",
+        },
+    )
 
 
 def test_parse_keeps_the_indentation_of_a_value():

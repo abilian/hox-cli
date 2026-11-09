@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import dataclasses
 
 import pytest
-
 from conftest import BRANCH_URL
+
 from hox_cli import deploy, status
 from hox_cli.config import Check, parse
 from hox_cli.dev import DevError
@@ -15,14 +17,25 @@ def sw(config_data, tmp_path):
 
 
 def instance(partition=None, connection=None):
-    return status.Instance("mynij-proxy-3", "start_requested", BRANCH_URL, "default", partition, connection or {}, None, [])
+    return status.Instance(
+        "mynij-proxy-3",
+        "start_requested",
+        BRANCH_URL,
+        "default",
+        partition,
+        connection or {},
+        None,
+        [],
+    )
 
 
 def test_wait_allocated(sw, monkeypatch):
     answers = iter([None, instance(), instance("slappart3")])
     monkeypatch.setattr(status, "instance", lambda api, title: next(answers))
     out = []
-    assert deploy.wait_allocated(None, sw, out.append, sleep=lambda s: None) == "slappart3"
+    assert (
+        deploy.wait_allocated(None, sw, out.append, sleep=lambda s: None) == "slappart3"
+    )
     assert out[-1] == "mynij-proxy-3: allocated on slappart3"
 
 
@@ -36,24 +49,42 @@ class FakeNode:
 
 
 def test_wait_built_reports_each_change_once():
-    node = FakeNode([("absent", None), ("building", None), ("building", None), ("building", "Error: boom"),
-                     ("completed", None)])
+    node = FakeNode([
+        ("absent", None),
+        ("building", None),
+        ("building", None),
+        ("building", "Error: boom"),
+        ("completed", None),
+    ])
     out = []
     deploy.wait_built(node, BRANCH_URL, out.append, sleep=lambda s: None)
     assert [line.split(": ", 1)[1] for line in out] == [
-        "absent", "building", "building (last error: Error: boom)", "completed",
+        "absent",
+        "building",
+        "building (last error: Error: boom)",
+        "completed",
     ]
 
 
 def test_wait_built_gives_up(monkeypatch):
     monkeypatch.setattr(deploy, "BUILD_TIMEOUT_SECONDS", 120)
     with pytest.raises(DevError, match="build of .*: still not there after 2 min"):
-        deploy.wait_built(FakeNode([("building", None)] * 10), BRANCH_URL, lambda _: None, sleep=lambda s: None)
+        deploy.wait_built(
+            FakeNode([("building", None)] * 10),
+            BRANCH_URL,
+            lambda _: None,
+            sleep=lambda s: None,
+        )
 
 
 def test_wait_checks_until_the_frontend_is_published(sw, monkeypatch):
-    sw = dataclasses.replace(sw, checks=(Check("frontend", "{url}/ping", expect_status=200),))
-    answers = iter([instance("slappart3"), instance("slappart3", {"url": "https://f.example"})])
+    sw = dataclasses.replace(
+        sw, checks=(Check("frontend", "{url}/ping", expect_status=200),)
+    )
+    answers = iter([
+        instance("slappart3"),
+        instance("slappart3", {"url": "https://f.example"}),
+    ])
     monkeypatch.setattr(status, "instance", lambda api, title: next(answers))
 
     class Node:
@@ -67,7 +98,9 @@ def test_wait_checks_until_the_frontend_is_published(sw, monkeypatch):
 
 
 def test_deploy_runs_only_our_partition(sw, monkeypatch):
-    monkeypatch.setattr(deploy, "wait_allocated", lambda api, sw, out, sleep: "slappart8")
+    monkeypatch.setattr(
+        deploy, "wait_allocated", lambda api, sw, out, sleep: "slappart8"
+    )
     monkeypatch.setattr(deploy, "wait_built", lambda node, url, out, sleep: None)
     monkeypatch.setattr(deploy, "wait_checks", lambda api, sw, node, out, sleep: [])
 

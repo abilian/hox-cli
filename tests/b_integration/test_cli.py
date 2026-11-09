@@ -1,11 +1,15 @@
-"""`hox request` and `hox destroy` decisions, against a fake master."""
+"""Command functions of cli.py, run through config, status and master, with a fake master and node."""
+
+from __future__ import annotations
 
 import dataclasses
+import json
 from pathlib import Path
 
 import pytest
-
 from conftest import BRANCH_URL
+from fakes import UP, FakeNode, FakeProject
+
 from hox_cli import cli
 from hox_cli.config import parse
 from hox_cli.dev import DevError
@@ -31,7 +35,11 @@ def master(config_data, monkeypatch):
     slap = FakeSlap()
     monkeypatch.setattr(cli, "_config", lambda: config)
     monkeypatch.setattr(cli, "_api", lambda c: None)
-    monkeypatch.setattr(cli, "_node", lambda c, api: ComputeNode("COMP-20261027.021-9D1365", "compute_node_module/1"))
+    monkeypatch.setattr(
+        cli,
+        "_node",
+        lambda c, api: ComputeNode("COMP-20261027.021-9D1365", "compute_node_module/1"),
+    )
     monkeypatch.setattr(cli.Slap, "connect", lambda m: slap)
     monkeypatch.setattr(cli, "stored_request", lambda api, name: instances.get(name))
     monkeypatch.setattr(cli.dev, "pushed_commit", lambda sw, commit: commit)
@@ -39,14 +47,20 @@ def master(config_data, monkeypatch):
 
 
 def existing(url, name="mynij-proxy-3"):
-    return Request(url, name, "default", {"computer_guid": "COMP-20261027.021-9D1365"}, {"p": "1"})
+    return Request(
+        url, name, "default", {"computer_guid": "COMP-20261027.021-9D1365"}, {"p": "1"}
+    )
 
 
 def test_new_instance_is_requested_on_our_node(master):
     instances, slap = master
     cli.request()
     [req] = slap.requests
-    assert (req.reference, req.software_release, req.state) == ("mynij-proxy-3", BRANCH_URL, "started")
+    assert (req.reference, req.software_release, req.state) == (
+        "mynij-proxy-3",
+        BRANCH_URL,
+        "started",
+    )
     assert req.filter == {"computer_guid": "COMP-20261027.021-9D1365"}
 
 
@@ -83,8 +97,16 @@ def test_replace_destroys_and_requests_the_next_free_name(master, capsys):
     instances["mynij-proxy-4"] = existing(BRANCH_URL, "mynij-proxy-4")
     cli.request(pinned="abc123", replace=True, yes=True)
     destroyed, created = slap.requests
-    assert (destroyed.reference, destroyed.state, destroyed.software_release) == ("mynij-proxy-3", "destroyed", BRANCH_URL)
-    assert (created.reference, created.state, created.software_release) == ("mynij-proxy-5", "started", PINNED)
+    assert (destroyed.reference, destroyed.state, destroyed.software_release) == (
+        "mynij-proxy-3",
+        "destroyed",
+        BRANCH_URL,
+    )
+    assert (created.reference, created.state, created.software_release) == (
+        "mynij-proxy-5",
+        "started",
+        PINNED,
+    )
     assert "set instance = 'mynij-proxy-5'" in capsys.readouterr().out
 
 
@@ -101,15 +123,21 @@ def test_destroy_resends_the_original_request(master):
     instances, slap = master
     instances["old"] = existing(BRANCH_URL, "old")
     cli.destroy("old", yes=True)
-    assert slap.requests == [dataclasses.replace(existing(BRANCH_URL, "old"), state="destroyed")]
+    assert slap.requests == [
+        dataclasses.replace(existing(BRANCH_URL, "old"), state="destroyed")
+    ]
 
 
-@pytest.mark.parametrize("command, state", [(cli.stop, "stopped"), (cli.start, "started")])
+@pytest.mark.parametrize(
+    "command, state", [(cli.stop, "stopped"), (cli.start, "started")]
+)
 def test_stop_and_start_resend_the_original_request(master, command, state):
     instances, slap = master
     instances["old"] = existing(BRANCH_URL, "old")
     command("old")
-    assert slap.requests == [dataclasses.replace(existing(BRANCH_URL, "old"), state=state)]
+    assert slap.requests == [
+        dataclasses.replace(existing(BRANCH_URL, "old"), state=state)
+    ]
 
 
 def test_stop_unknown(master):
@@ -119,7 +147,9 @@ def test_stop_unknown(master):
 
 def test_start_refuses_a_destroyed_instance(master):
     instances, slap = master
-    instances["old"] = dataclasses.replace(existing(BRANCH_URL, "old"), state="destroyed")
+    instances["old"] = dataclasses.replace(
+        existing(BRANCH_URL, "old"), state="destroyed"
+    )
     with pytest.raises(DevError, match="old is destroyed"):
         cli.start("old")
     assert slap.requests == []
@@ -130,7 +160,9 @@ def test_destroy_unknown(master):
         cli.destroy("x", yes=True)
 
 
-def test_deploy_refuses_an_unpushed_branch_before_touching_the_master(master, monkeypatch):
+def test_deploy_refuses_an_unpushed_branch_before_touching_the_master(
+    master, monkeypatch
+):
     _, slap = master
 
     def unpushed(sw):
@@ -144,3 +176,37 @@ def test_deploy_refuses_an_unpushed_branch_before_touching_the_master(master, mo
     with pytest.raises(DevError, match="push it first"):
         cli.deploy()
     assert slap.requests == []
+
+
+def test_status_needs_no_name_however_many_software_there_are(
+    config_data, monkeypatch, capsys
+):
+    other = {**config_data["software"]["mynij-proxy"], "instance": "other-1"}
+    data = dict(config_data, software={**config_data["software"], "other": other})
+    many = parse(data, Path("/work/hox"))
+    monkeypatch.setattr(cli, "_config", lambda: many)
+    monkeypatch.setattr(cli, "_api", lambda c: FakeProject())
+    monkeypatch.setattr(
+        cli, "_node", lambda c, api: ComputeNode("COMP", "compute_node_module/1")
+    )
+    monkeypatch.setattr(cli, "Node", lambda ssh: FakeNode(UP))
+    cli.status()
+    out = capsys.readouterr().out
+    assert "node           hox-node" in out
+    assert "not deployed   other" in out
+    cli.instances()
+    assert "mynij-proxy-3" in capsys.readouterr().out
+
+
+def test_status_json_is_the_overview(config_data, monkeypatch, capsys):
+    config = parse(config_data, Path("/work/hox"))
+    monkeypatch.setattr(cli, "_config", lambda: config)
+    monkeypatch.setattr(cli, "_api", lambda c: FakeProject())
+    monkeypatch.setattr(
+        cli, "_node", lambda c, api: ComputeNode("COMP", "compute_node_module/1")
+    )
+    monkeypatch.setattr(cli, "Node", lambda ssh: FakeNode(error="down"))
+    cli.status(json_=True)
+    assert json.loads(capsys.readouterr().out)["node_error"] == "down"
+    cli.instances(json_=True)
+    assert json.loads(capsys.readouterr().out)[0]["status"] == "unknown"
