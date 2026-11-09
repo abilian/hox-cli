@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 import re
 
+# pyrefly: ignore[missing-import]
 from conftest import BRANCH_URL, fixture_json
 
 from hox_cli.node import NodeError, NodeFacts, Partition, SoftwareState, System
@@ -62,6 +63,7 @@ class FakeNode:
     def system(self):
         if self.error:
             raise NodeError(self.error)
+        # pyrefly: ignore[bad-argument-type]
         return System(90000, self.partitions, 3700, 7900, 45056, 122880)
 
     def facts(self, urls):
@@ -93,6 +95,7 @@ class FakeApi:
         } | rows
 
     def search(self, query, select, limit=100):
+        # pyrefly: ignore[missing-attribute]
         portal_type = re.search(r'portal_type:\(?"([^"]+)"', query).group(1)
         return [dict(r) for r in self.rows[portal_type]]
 

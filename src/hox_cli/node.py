@@ -109,13 +109,14 @@ class Node:
 
         Returns its exit code and its last lines, shown or not (ssh's own errors included).
         """
-        last = deque(maxlen=TAIL_LINES)
+        last: deque[str] = deque(maxlen=TAIL_LINES)
         with self._popen(
             [*self._ssh, command],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
         ) as proc:
+            assert proc.stdout is not None  # stdout=PIPE
             for line in proc.stdout:
                 line = line.rstrip("\n")
                 last.append(line)

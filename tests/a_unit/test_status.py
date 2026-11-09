@@ -4,7 +4,11 @@ import dataclasses
 from pathlib import Path
 
 import pytest
+
+# pyrefly: ignore[missing-import]
 from conftest import BRANCH_URL, fixture_json
+
+# pyrefly: ignore[missing-import]
 from fakes import STALE_URL, FakeApi, FakeNode, FakeProject, unallocated
 
 from hox_cli import cli
@@ -38,9 +42,13 @@ def test_ticked_cells():
 
 def test_instance():
     inst = instance(FakeApi(), "mynij-proxy-3")
+    # pyrefly: ignore[missing-attribute]
     assert inst.partition == "slappart0"
+    # pyrefly: ignore[missing-attribute]
     assert inst.connection["backend-url"] == "https://[2401:5180:12::2]:3001"
+    # pyrefly: ignore[missing-attribute]
     assert inst.url == BRANCH_URL
+    # pyrefly: ignore[missing-attribute]
     assert [(f.title, f.allocated) for f in inst.frontends] == [
         ("Mynij Proxy Frontend", False),
         ("Monitor Frontend mynij-proxy-3", False),
@@ -150,9 +158,16 @@ def test_status_of_one_software_leaves_out_the_others(config, monkeypatch):
 
     monkeypatch.setattr(cli.status_module, "github", lambda sw, http: None)
     report = gather(
-        config, config.software["mynij-proxy"], Master(), Node(), None, "COMP"
+        # pyrefly: ignore[bad-argument-type]
+        config,
+        config.software["mynij-proxy"],
+        Master(),
+        Node(),
+        None,
+        "COMP",
     )
     assert [i.url for i in report.installations] == [BRANCH_URL]
+    # pyrefly: ignore[missing-attribute]
     assert report.node.failing_promises == ["slappart0[default]: mine"]
 
 

@@ -60,7 +60,10 @@ def test_run_checks_fills_connection_parameters_and_skips_unpublished():
     frontend = Check("frontend", "{url}/ping", expect_status=200)
     node = FakeNode(HEADERS)
     results = run_checks(
-        (PING, frontend), {"backend-url": "https://[::1]:3001", "url": "None"}, node
+        # pyrefly: ignore[bad-argument-type]
+        (PING, frontend),
+        {"backend-url": "https://[::1]:3001", "url": "None"},
+        node,
     )
     assert [(r.name, r.ok) for r in results] == [("ping", True), ("frontend", False)]
     assert results[1].detail == "url is not published yet"

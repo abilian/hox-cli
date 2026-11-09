@@ -4,6 +4,8 @@ import copy
 import re
 
 import pytest
+
+# pyrefly: ignore[missing-import]
 from conftest import BRANCH_URL, RE6ST_RELEASE, fixture_json
 
 from hox_cli import panel
@@ -72,6 +74,7 @@ class FakeMaster:
             self._add_everything()
 
     def _add_everything(self):
+        # pyrefly: ignore[bad-assignment]
         self.rows |= {
             "Software Product": [self._row("software_product_module/S", 2)],
             "Software Product Type Variation": [
@@ -94,6 +97,7 @@ class FakeMaster:
     def search(self, query, select, limit=100):
         self.rows |= dict(self.pending)
         self.pending = []
+        # pyrefly: ignore[missing-attribute]
         portal_type = re.match(r'portal_type:"([^"]+)"', query).group(1)
         return list(self.rows.get(portal_type, []))
 
@@ -296,7 +300,11 @@ def test_re6st_token_requests_a_shared_instance_and_waits_for_its_token(config):
     slap, sleeps = FakeSlap(), []
     assert (
         panel.re6st_token(
-            Master(), slap, config, out=lambda _: None, sleep=sleeps.append
+            Master(),
+            slap,
+            config,
+            out=lambda _: None,
+            sleep=sleeps.append,  # pyrefly: ignore[bad-argument-type]
         )
         == "re6-xyz"
     )

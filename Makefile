@@ -7,8 +7,12 @@ check: lint
 lint:
 	uv run --active ruff check
 	uv run --active ruff format --check
+	@make typecheck
+
+typecheck:
 	uv run --active ty check src
-	uv run --active pyrefly check src
+	uv run --active pyrefly check src --min-severity=warn
+	uv run --active zuban check src
 	uv run --active mypy src
 	# uv run --active mypy --strict src
 

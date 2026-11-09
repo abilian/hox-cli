@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+# pyrefly: ignore[missing-import]
 from conftest import BRANCH_URL
 
 from hox_cli import report

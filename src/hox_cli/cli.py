@@ -375,13 +375,6 @@ def format_report(r: status_module.Report, config: Config) -> str:
     return "\n".join(out)
 
 
-def _instance_or_fail(api: Api, sw: Software) -> status_module.Instance:
-    inst = status_module.instance(api, sw.instance)
-    if inst is None:
-        raise DevError(f"no instance {sw.instance!r} on the master (`hox request`)")
-    return inst
-
-
 @app.command
 def check(software: str | None = None) -> int:
     """Run the software's checks (hox.toml) with curl on the node.
@@ -393,7 +386,7 @@ def check(software: str | None = None) -> int:
     """
     config = _config()
     sw = config.software_named(software)
-    inst = _instance_or_fail(_api(config), sw)
+    inst = status_module.require_instance(_api(config), sw)
     return _report_checks(
         dev.run_checks(sw.checks, inst.connection, Node(config.node.ssh))
     )
@@ -442,7 +435,7 @@ def rebuild(
     node.slapgrid(f"software --force --only-sr {sw.branch_url}")
     if software_only:
         return 0
-    inst = _instance_or_fail(_api(config), sw)
+    inst = status_module.require_instance(_api(config), sw)
     if inst.partition is None:
         raise DevError(f"{sw.instance} is not allocated yet: `hox status` says why")
     # Only our partition: another one's failure (a release still building) isn't ours.
@@ -451,7 +444,7 @@ def rebuild(
         == SLAPGRID_PROMISE_FAIL
     ):
         print("some promises fail (see above)")
-    inst = _instance_or_fail(
+    inst = status_module.require_instance(
         _api(config), sw
     )  # connection parameters, as published by this run
     return _report_checks(dev.run_checks(sw.checks, inst.connection, node))
@@ -504,7 +497,7 @@ def logs(
     config = _config()
     if kind == "app":
         sw = config.software_named(software)
-        partition = _instance_or_fail(_api(config), sw).partition
+        partition = status_module.require_instance(_api(config), sw).partition
         if partition is None:
             raise DevError(f"{sw.instance} has no partition yet")
         target = f"/srv/slapgrid/{partition}/.{partition}_*.log"

@@ -62,12 +62,12 @@ class Run:
 def parse_runs(log: str) -> list[Run]:
     runs: list[Run] = []
     current: Run | None = None
-    last = None  # time of the last line read
+    last: datetime | None = None  # time of the last line read
 
-    def close(end: datetime) -> None:
-        current.end = end
-        if current.result == "building":
-            current.result = "stopped"
+    def close(run: Run, end: datetime) -> None:
+        run.end = end
+        if run.result == "building":
+            run.result = "stopped"
 
     for line in log.splitlines():
         m = _EVENT.match(line)
@@ -76,11 +76,12 @@ def parse_runs(log: str) -> list[Run]:
         when = utc(m["time"])
         if m["processing"]:  # a new slapgrid run: one still open was killed
             if current:
-                close(last)
+                assert last is not None  # an open run has had at least its first line
+                close(current, last)
             current = None
         elif m["release"]:
             if current:  # the previous release of the same slapgrid run
-                close(when)
+                close(current, when)
             current = Run(m["release"], when)
             runs.append(current)
         elif current is None:
@@ -92,7 +93,7 @@ def parse_runs(log: str) -> list[Run]:
         elif m["failed"]:
             current.result = "failed"
         elif m["finished"]:
-            close(when)
+            close(current, when)
             current = None
         last = when
     return runs

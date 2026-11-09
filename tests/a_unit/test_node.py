@@ -3,6 +3,8 @@ from __future__ import annotations
 import subprocess
 
 import pytest
+
+# pyrefly: ignore[missing-import]
 from conftest import fixture_text
 
 from hox_cli.node import (
@@ -56,6 +58,7 @@ def test_parse_facts():
     output = f"{d} building\n{SEPARATOR}\n{fixture_text('software.log')}{SEPARATOR}\n{fixture_text('instance.log')}"
     facts = parse_facts([PINNED, "https://other"], output)
     assert facts.software[0].state == "building"
+    # pyrefly: ignore[missing-attribute]
     assert facts.software[0].last_error.startswith("Error: Error downloading")
     assert facts.software[1].state == "absent"
     assert len(facts.failing_promises) == 1

@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 import tomllib
+
+# pyrefly: ignore[missing-import]
 from conftest import BRANCH_URL
 
 from hox_cli.config import ConfigError, find, load, parse

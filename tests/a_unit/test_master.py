@@ -6,6 +6,8 @@ from urllib.parse import parse_qs, urlsplit
 
 import httpx2
 import pytest
+
+# pyrefly: ignore[missing-import]
 from conftest import fixture_json
 
 from hox_cli.config import Master
@@ -153,6 +155,7 @@ class Searching:
 
 
 def test_stored_request_reads_back_the_original():
+    # pyrefly: ignore[bad-argument-type]
     assert stored_request(Searching(), "mynij-proxy-3") == Request(
         software_release=BRANCH_URL,
         reference="mynij-proxy-3",
@@ -410,7 +413,9 @@ class Nodes:
 
 def test_find_node():
     assert find_node(
-        Nodes([{"reference": "COMP-9", "relative_url": "compute_node_module/9"}]),
+        Nodes([
+            {"reference": "COMP-9", "relative_url": "compute_node_module/9"}
+        ]),  # pyrefly: ignore[bad-argument-type]
         "P",
         "hox-node",
     ) == (ComputeNode("COMP-9", "compute_node_module/9"))
@@ -422,4 +427,5 @@ def test_find_node():
 )
 def test_find_node_needs_exactly_one(rows, found):
     with pytest.raises(MasterError, match=f"compute node 'hox-node' in P: {found}"):
+        # pyrefly: ignore[bad-argument-type]
         find_node(Nodes(rows), "P", "hox-node")

@@ -3,6 +3,8 @@ from __future__ import annotations
 import dataclasses
 
 import pytest
+
+# pyrefly: ignore[missing-import]
 from conftest import BRANCH_URL
 
 from hox_cli import deploy, status
@@ -34,6 +36,7 @@ def test_wait_allocated(sw, monkeypatch):
     monkeypatch.setattr(status, "instance", lambda api, title: next(answers))
     out = []
     assert (
+        # pyrefly: ignore[bad-argument-type]
         deploy.wait_allocated(None, sw, out.append, sleep=lambda s: None) == "slappart3"
     )
     assert out[-1] == "mynij-proxy-3: allocated on slappart3"
@@ -57,6 +60,7 @@ def test_wait_built_reports_each_change_once():
         ("completed", None),
     ])
     out = []
+    # pyrefly: ignore[bad-argument-type]
     deploy.wait_built(node, BRANCH_URL, out.append, sleep=lambda s: None)
     assert [line.split(": ", 1)[1] for line in out] == [
         "absent",
@@ -70,6 +74,7 @@ def test_wait_built_gives_up(monkeypatch):
     monkeypatch.setattr(deploy, "BUILD_TIMEOUT_SECONDS", 120)
     with pytest.raises(DevError, match="build of .*: still not there after 2 min"):
         deploy.wait_built(
+            # pyrefly: ignore[bad-argument-type]
             FakeNode([("building", None)] * 10),
             BRANCH_URL,
             lambda _: None,
@@ -92,6 +97,7 @@ def test_wait_checks_until_the_frontend_is_published(sw, monkeypatch):
             return "HTTP/1.1 200 OK\r\n\r\ncurl-exit=0\n"
 
     out = []
+    # pyrefly: ignore[bad-argument-type]
     [result] = deploy.wait_checks(None, sw, Node(), out.append, sleep=lambda s: None)
     assert result.ok
     assert out == ["waiting for: frontend: url is not published yet"]
@@ -110,5 +116,6 @@ def test_deploy_runs_only_our_partition(sw, monkeypatch):
             return 0
 
     node = Node()
+    # pyrefly: ignore[bad-argument-type]
     deploy.deploy(None, sw, BRANCH_URL, node, out=lambda _: None)
     assert node.args == "instance --force --only-cp slappart8"

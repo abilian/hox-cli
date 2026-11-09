@@ -1,6 +1,7 @@
 """The SlapOS master: its API (hateoas) for reads and forms, and the slap protocol."""
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from urllib.parse import quote, urljoin, urlsplit
 from xml.etree import ElementTree
@@ -17,7 +18,7 @@ class MasterError(Exception):
     pass
 
 
-def expand(template: str, params: dict[str, str | int | list]) -> str:
+def expand(template: str, params: Mapping[str, str | int | list]) -> str:
     """RFC 6570 form-style query expansion ({&a,b*}), the only kind the API uses."""
 
     def replace(match: re.Match) -> str:
@@ -302,8 +303,13 @@ def instance_xml(xml: str | None) -> dict[str, str]:
     """<instance><parameter id="k">v</parameter>…</instance> -> {k: v}."""
     if not xml:
         return {}
-    root = ElementTree.fromstring(xml.encode())
-    return {p.get("id"): p.text or "" for p in root.iter("parameter")}
+    params = {}
+    for p in ElementTree.fromstring(xml.encode()).iter("parameter"):
+        key = p.get("id")
+        if key is None:
+            raise MasterError(f"instance XML: a parameter has no id: {xml[:200]}")
+        params[key] = p.text or ""
+    return params
 
 
 class Slap:

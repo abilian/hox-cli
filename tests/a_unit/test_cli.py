@@ -5,7 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
+# pyrefly: ignore[missing-import]
 from conftest import BRANCH_URL
+
+# pyrefly: ignore[missing-import]
 from fakes import UP, FakeApi, FakeNode, FakeProject, unallocated
 
 from hox_cli.cli import format_instances, format_overview, format_report

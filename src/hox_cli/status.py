@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 import httpx2
 
 from .config import Config, Software, short_ref
-from .master import Api, quoted
+from .master import Api, MasterError, quoted
 from .node import Node, NodeError, NodeFacts, Partition, System, git
 
 
@@ -84,7 +84,6 @@ class Overview:
 def overview(config: Config, api: Api, node: Node, node_reference: str) -> Overview:
     rows = deployed(config, api)
     result = Overview(rows, sorted(set(config.software) - {r.software for r in rows}))
-    known = {sw.name: sw for sw in config.software.values()}
     wanted = [
         i.url
         for i in installations(api, node_reference)
@@ -96,7 +95,8 @@ def overview(config: Config, api: Api, node: Node, node_reference: str) -> Overv
     except NodeError as e:
         result.node_error = str(e)
     result.instances = [
-        _observed(r, known.get(r.software), result.system) for r in rows
+        _observed(r, config.software[r.software] if r.software else None, result.system)
+        for r in rows
     ]
     return result
 
@@ -235,24 +235,32 @@ def instance(api: Api, title: str) -> Instance | None:
             for r in rows
             if r["portal_type"] == "Software Instance" and r["title"] == title
         ),
-        None,
+        {},  # none yet: not allocated
     )
     frontends = [
         Frontend(r["title"], r["aggregate_title"] is not None)
         for r in rows
         if r["portal_type"] == "Slave Instance"
     ]
-    news = (root or {}).get("SoftwareInstance_getNewsDict") or {}
+    news: dict = root.get("SoftwareInstance_getNewsDict") or {}
     return Instance(
         title=title,
         state=tree["slap_state"],
         url=tree["url_string"],
         software_type=tree["source_reference"],
-        partition=(root or {}).get("aggregate_title"),
-        connection=(root or {}).get("getConnectionXmlAsDict") or {},
+        partition=root.get("aggregate_title"),
+        connection=root.get("getConnectionXmlAsDict") or {},
         news=news.get("text") if not news.get("no_data") else None,
         frontends=frontends,
     )
+
+
+def require_instance(api: Api, sw: Software) -> Instance:
+    """The software's instance; an error that says what to do when the master has none."""
+    inst = instance(api, sw.instance)
+    if inst is None:
+        raise MasterError(f"no instance {sw.instance!r} on the master (`hox request`)")
+    return inst
 
 
 def installations(api: Api, node_reference: str) -> list[Installation]:
@@ -318,7 +326,12 @@ def matrix_cells(line_view: dict) -> Iterator[tuple[str, str, dict]]:
         header, rows = table[0], table[1:]
         for row in rows:
             for field in row[1:]:
-                column = int(_CELL.search(field["key"]).group(1))
+                cell = _CELL.search(field["key"])
+                if cell is None:
+                    raise MasterError(
+                        f"Allocation Supply matrix: unexpected field {field['key']!r}"
+                    )
+                column = int(cell.group(1))
                 yield _label(row[0]), _label(header[1 + column]), field
 
 

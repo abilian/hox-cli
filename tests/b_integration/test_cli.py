@@ -7,7 +7,11 @@ import json
 from pathlib import Path
 
 import pytest
+
+# pyrefly: ignore[missing-import]
 from conftest import BRANCH_URL
+
+# pyrefly: ignore[missing-import]
 from fakes import UP, FakeNode, FakeProject
 
 from hox_cli import cli

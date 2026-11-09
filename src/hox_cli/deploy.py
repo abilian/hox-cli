@@ -61,7 +61,7 @@ def wait_checks(
     def find() -> list[list[dev.CheckResult]]:
         nonlocal last
         results = dev.run_checks(
-            sw.checks, status.instance(api, sw.instance).connection, node
+            sw.checks, status.require_instance(api, sw).connection, node
         )
         failing = [f"{r.name}: {r.detail}" for r in results if not r.ok]
         if failing and failing != last:

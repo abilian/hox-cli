@@ -56,6 +56,12 @@ root = "tests/a_unit"
 label = "unit"
 target_share = 0.6
 
+[tool.pyrefly]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+
 [[tool.tepyd.tiers]]
 name = "b_integration"
 root = "tests/b_integration"

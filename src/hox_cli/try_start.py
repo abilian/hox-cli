@@ -136,7 +136,7 @@ class Run:
                 ("release-key", "marker"): str(home / "var/run/release-try-start"),
             },
         )
-        self.env = {}
+        self.env: dict[str, str] = {}
         self.processes: dict[str, subprocess.Popen] = {}
         self.postgres: list[str] | None = None
 
@@ -238,7 +238,7 @@ class Run:
 
     def status(self, url: str) -> int | str:
         class NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, *args):
+            def redirect_request(self, req, fp, code, msg, headers, newurl):
                 return None
 
         try:
