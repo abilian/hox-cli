@@ -87,10 +87,10 @@ def test_find_none(tmp_path):
 def test_example_config_is_valid():
     example = Path(__file__).parents[2] / "hox.example.toml"
     config = parse(tomllib.loads(example.read_text()), ROOT)
-    assert list(config.software) == ["mynij-proxy", "abilian-sbe", "aipress24"]
-    sw = config.software_named("mynij-proxy")
-    assert sw.checkout == Path("/work/hox/slapos_abilian_edge")
-    assert [c.name for c in sw.checks] == ["backend ping", "frontend ping", "CORS"]
+    sw = config.software_named(None)
+    assert sw.name == "my-app"
+    assert sw.checkout == Path("/work/hox/slapos")
+    assert [c.name for c in sw.checks] == ["backend", "frontend", "CORS"]
 
 
 def test_only_ssh_file_options_are_paths(config_data):

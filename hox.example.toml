@@ -1,107 +1,66 @@
-# Example hox.toml: a copy of the HOX workspace's own, commented.
-# The real one lives at the workspace root (hox looks for it in the current
-# directory and its parents). Relative paths are relative to its directory.
+# Example hox.toml. Copy it to the root of your workspace, next to the
+# checkouts of your software repositories: hox looks for hox.toml in the
+# current directory and its parents. Relative paths are relative to its
+# directory. Reference: docs/src/reference/config.md.
 
 [master]
 url = "https://slap.vifib.com/"
-# Client certificate from `slapos configure client`.
+# Client certificate, from `slapos configure client`.
 cert = "~/.slapos/client.crt"
 key = "~/.slapos/client.key"
-# api.vifib.com serves slap.vifib.com's certificate: verify it under that name.
+# Rapid.Space's API serves slap.vifib.com's certificate: verify it under that name.
 api_tls_name = "slap.vifib.com"
 
 [project]
-reference = "PROJ-20261026.009-F09D5B"  # Abilian (HyperOpenX)
+reference = "PROJ-20260101.001-0A1B2C"  # your project, as the panel shows it
 
 [node]
-# Its title on the master (node-deployer registers it under this name); hox
-# looks its reference up there, so a new registration needs no change here.
-title = "hox-node"
+# The compute node's title on the master. hox looks its reference up by
+# title, so a node registered again needs no change here.
+title = "my-node"
 # How to run a command on the node as root; hox appends the command.
-ssh = ["ssh", "-F", "node-deployer/ssh_config", "-o", "LogLevel=ERROR", "hox-node"]
-# `hox re6st-token`: the registry's project ("Re6st Registries") and release.
+ssh = ["ssh", "-F", "ssh_config", "-o", "LogLevel=ERROR", "my-node"]
+# For `hox re6st-token` only: Rapid.Space's re6st registry.
 re6st_project = "PROJ-112"
 re6st_release = "https://lab.nexedi.com/nexedi/slapos/-/raw/1.0.404/software/re6stnet/software.cfg"
 
-# One table per software release we develop. Its Allocation Supply is titled
-# "<product> on <node title>".
-[software.mynij-proxy]
-repo = "abilian/slapos_abilian_edge"  # GitHub repo the node fetches from
-checkout = "slapos_abilian_edge"  # local clone of it
-branch = "mynij-proxy"  # gives the branch URL
-path = "software/mynij-proxy/software.cfg"
+# One table per software release you develop.
+[software.my-app]
+repo = "my-org/slapos"  # GitHub repository the node fetches the release from
+checkout = "slapos"  # local clone of it
+branch = "my-app"  # gives the branch URL
+path = "software/my-app/software.cfg"
 software_type = "default"
-product = "mynij-proxy"  # Software Product title on the master
-# Instance tree name. An instance stays on the node it was first requested on:
+product = "my-app"  # Software Product title; its Allocation Supply is "my-app on my-node"
+# Instance name. An instance stays on the node it was first requested on:
 # a new node, or a new URL with `hox request --replace`, means a new name.
-instance = "mynij-proxy-4"
+instance = "my-app-1"
+# Services of etc/service that exit once their work is done, so that their
+# exit doesn't count as a failure.
+# one_shot = ["my_app_initdb"]
 
-# Checks run by `hox check` and `hox rebuild`, with curl on the node. URLs take
-# the instance's connection parameters ({backend-url}, {url}, …); a check whose
-# parameter isn't published yet fails with that reason.
-[[software.mynij-proxy.checks]]
-name = "backend ping"
-url = "{backend-url}/ping"
-expect_status = 200
+# The instance's parameters, sent with every `hox request` (and `hox deploy`):
+# this table replaces those the instance has; without it, they stay as they are.
+# The master stores them in clear, and the project's members see them in the panel.
+# [software.my-app.parameters]
+# ENVIRONMENT = "production"
 
-[[software.mynij-proxy.checks]]
-name = "frontend ping"
-url = "{url}/ping"
-expect_status = 200
-
-[[software.mynij-proxy.checks]]
-name = "CORS"
-url = "{backend-url}/proxy?url=https://example.org/"
-headers = { Origin = "https://example.org" }
-expect_header = { access-control-allow-origin = "https://example.org" }
-
-[software.abilian-sbe]
-repo = "abilian/slapos_abilian_edge"
-checkout = "slapos_abilian_edge"
-branch = "hox_sbe_edge_2026_py313"
-path = "software/abilian-sbe/software.cfg"
-software_type = "default"
-product = "abilian-sbe"
-instance = "abilian-sbe-1"
-# These three run once at each start, from etc/service: their exit is not a failure.
-one_shot = ["sbe_assets", "sbe_create_admin", "sbe_initdb"]
-
-# No expected status yet: any HTTP answer passes. Tighten once we know what /
-# answers (probably a redirect to the login page).
-[[software.abilian-sbe.checks]]
+# Checks run by `hox check`, `hox rebuild` and `hox deploy`, with curl on the
+# node. URLs take the instance's connection parameters ({backend-url}, {url},
+# or whatever your release publishes); a check whose parameter isn't
+# published yet fails with that reason.
+[[software.my-app.checks]]
 name = "backend"
 url = "{backend-url}/"
+expect_status = 200
 
-[[software.abilian-sbe.checks]]
+[[software.my-app.checks]]
 name = "frontend"
 url = "{url}/"
-
-[software.aipress24]
-repo = "abilian/slapos_abilian_edge"
-checkout = "slapos_abilian_edge"
-branch = "aipress24"
-path = "software/aipress24/software.cfg"
-software_type = "default"
-product = "aipress24"
-instance = "aipress24-1"
-
-# The instance's parameters, sent with every `hox request` (and so `hox deploy`):
-# this table replaces those the instance has; without it, they stay as they are.
-# aipress24's profile exports each one to the app's processes, under its name,
-# as `hop3 config set` does (see scripts/hop3-config.example.sh in the app).
-# The master stores them in clear, and the project's members see them in the panel.
-# [software.aipress24.parameters]
-# ENV_FOR_DYNACONF = "production"
-# FLASK_S3_ENDPOINT_URL = "https://s3.fr-par.scw.cloud"
-# FLASK_S3_ACCESS_KEY_ID = "…"
-# FLASK_S3_SECRET_ACCESS_KEY = "…"
-
-[[software.aipress24.checks]]
-name = "backend health"
-url = "{backend-url}/system/health"
 expect_status = 200
 
-[[software.aipress24.checks]]
-name = "frontend health"
-url = "{url}/system/health"
-expect_status = 200
+[[software.my-app.checks]]
+name = "CORS"
+url = "{backend-url}/api"
+headers = { Origin = "https://example.org" }
+expect_header = { access-control-allow-origin = "https://example.org" }
